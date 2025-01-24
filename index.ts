@@ -313,10 +313,10 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 				content += "```\n";
 				for (const range of mergedRanges) {
 					const [startLine, endLine] = range;
-					for (let j = startLine; j <= endLine; j++) {
-						content += `${lines[j]}\n`;
+					const lineContent = lines.slice(startLine, endLine + 1).join("\n");
+					if (lineContent.trim()) {
+						content += lineContent + "\n";
 					}
-					content += "\n";
 				}
 				content += "```\n\n---\n\n";
 			} catch (error) {

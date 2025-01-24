@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/johnlindquist/ghx/compare/v1.0.0...v1.1.0) (2025-01-24)
+
+
+### Features
+
+* **cli:** add --help flag with search options and examples ([a7bf5b8](https://github.com/johnlindquist/ghx/commit/a7bf5b8a45b90189a9e05bb31601d4fc8cf80a6c))
+
 # 1.0.0 (2025-01-24)
 
 

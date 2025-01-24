@@ -2,13 +2,70 @@
 
 import { Octokit } from "@octokit/rest";
 import { format } from "date-fns";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { mkdirp } from "mkdirp";
 import { writeFile } from "node:fs/promises";
 import { execSync } from "node:child_process";
 import * as p from "@clack/prompts";
 import fetch from "node-fetch";
+import Conf from "conf";
+import envPaths from "env-paths";
+
+const config = new Conf({
+	projectName: "ghx",
+});
+
+// Get the config path for the current platform
+const configPath = envPaths("ghx").config;
+const searchesPath = join(configPath, "searches");
+
+type EditorConfig = {
+	command: string | null;
+	skipEditor: boolean;
+};
+
+async function getEditorCommand(): Promise<EditorConfig> {
+	const savedConfig = config.get("editor") as EditorConfig | undefined;
+
+	if (savedConfig) return savedConfig;
+
+	const useEditor = await p.confirm({
+		message: "Would you like to open results in an editor?",
+		initialValue: true,
+	});
+
+	if (p.isCancel(useEditor)) {
+		p.cancel("Setup cancelled");
+		process.exit(1);
+	}
+
+	if (!useEditor) {
+		const editorConfig: EditorConfig = { command: null, skipEditor: true };
+		config.set("editor", editorConfig);
+		return editorConfig;
+	}
+
+	const editorCommand = await p.text({
+		message: "Enter editor command (e.g. 'code', 'cursor', 'vim')",
+		placeholder: "code",
+		validate(value) {
+			if (!value) return "Please enter an editor command";
+			return;
+		},
+	});
+
+	if (p.isCancel(editorCommand)) {
+		p.cancel("Setup cancelled");
+		process.exit(1);
+	}
+
+	const editorConfig: EditorConfig = {
+		command: editorCommand,
+		skipEditor: false,
+	};
+	config.set("editor", editorConfig);
+	return editorConfig;
+}
 
 // Type for GitHub search result
 type SearchResult = {
@@ -68,11 +125,12 @@ async function getGitHubToken(): Promise<string> {
 async function ghsearch(initialQuery?: string): Promise<number> {
 	const debug = true;
 	const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
-	const logDir = join(homedir(), "searches", "logs");
+	const logDir = join(configPath, "logs");
 	const logFile = join(logDir, `ghsearch-${timestamp}.log`);
 
-	// Ensure log directory exists
+	// Ensure directories exist
 	await mkdirp(logDir);
+	await mkdirp(searchesPath);
 
 	function log(level: string, message: string) {
 		if (level === "DEBUG" && !debug) return;
@@ -138,9 +196,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 	log("DEBUG", `Sanitized filename: ${sanitizedQuery}`);
 
 	// Set up results file
-	const resultsDir = join(homedir(), "searches");
-	const resultsFile = join(resultsDir, `${sanitizedQuery}-${timestamp}.md`);
-	await mkdirp(resultsDir);
+	const resultsFile = join(searchesPath, `${sanitizedQuery}-${timestamp}.md`);
 
 	log("INFO", `Will save results to: ${resultsFile}`);
 
@@ -315,7 +371,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 					const [startLine, endLine] = range;
 					const lineContent = lines.slice(startLine, endLine + 1).join("\n");
 					if (lineContent.trim()) {
-						content += lineContent + "\n";
+						content += `${lineContent}\n`;
 					}
 				}
 				content += "```\n\n---\n\n";
@@ -340,24 +396,36 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 					log("ERROR", `Failed to fetch content: ${err.message}`);
 					content += "```\n/* Error fetching content */\n```\n\n---\n\n";
 				}
-				continue;
 			}
 		}
 
 		await writeFile(resultsFile, content);
 		s2.stop("Results processed");
 
-		// Try to open in Cursor
-		try {
-			execSync(
-				`/Applications/Cursor.app/Contents/MacOS/Cursor "${resultsFile}"`,
-			);
-			p.note(`Results saved to ${resultsFile}`, "Opening in Cursor");
-		} catch (error) {
-			log("ERROR", "Failed to open results in Cursor");
+		// Try to open in configured editor
+		const editorConfig = await getEditorCommand();
+
+		if (!editorConfig.skipEditor && editorConfig.command) {
+			try {
+				execSync(`${editorConfig.command} "${resultsFile}"`);
+				p.note(
+					`Results saved to ${resultsFile}\nTo change your editor, edit: ${join(configPath, "config.json")}`,
+					"Opening in editor",
+				);
+			} catch (error) {
+				log(
+					"ERROR",
+					`Failed to open results in editor: ${editorConfig.command}`,
+				);
+				p.note(
+					`Results saved to ${resultsFile}\nTo change your editor, edit: ${join(configPath, "config.json")}`,
+					`You can open manually with: ${editorConfig.command}`,
+				);
+			}
+		} else if (editorConfig.skipEditor) {
 			p.note(
-				`Results saved to ${resultsFile}`,
-				"You can open manually with: cursor",
+				`Results saved to ${resultsFile}\nTo change your editor, edit: ${join(configPath, "config.json")}`,
+				"Editor disabled",
 			);
 		}
 
@@ -377,8 +445,6 @@ const args = process.argv.slice(2);
 if (args.length > 0) {
 	ghsearch(args.join(" ")).catch(console.error);
 }
-
-export { ghsearch };
 
 // Helper type for error handling
 type ErrorWithMessage = {

@@ -5,7 +5,6 @@ import { join } from "node:path";
 import { mkdirp } from "mkdirp";
 import { writeFile } from "node:fs/promises";
 import { execSync } from "node:child_process";
-import { fetch } from "zx";
 import * as p from "@clack/prompts";
 
 // Type for GitHub search result
@@ -63,12 +62,11 @@ async function getGitHubToken(): Promise<string> {
 	}
 }
 
-async function ghsearch(initialQuery?: string) {
+async function ghsearch(initialQuery?: string): Promise<number> {
 	const debug = true;
 	const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
 	const logDir = join(homedir(), "searches", "logs");
 	const logFile = join(logDir, `ghsearch-${timestamp}.log`);
-	const MIN_CONTEXT = 50; // Minimum lines to show for context
 
 	// Ensure log directory exists
 	await mkdirp(logDir);
@@ -97,6 +95,7 @@ async function ghsearch(initialQuery?: string) {
 				placeholder: 'filename:tsconfig.json path:/ "strict": true',
 				validate(value) {
 					if (!value) return "Please enter a search query";
+					return;
 				},
 			});
 
@@ -214,10 +213,14 @@ async function ghsearch(initialQuery?: string) {
 
 				// Parse owner, repo, and ref from URL
 				const urlParts = result.url.split("/");
-				const owner = urlParts[3];
-				const repo = urlParts[4];
-				const ref = urlParts[6];
+				const owner = urlParts[3] ?? "";
+				const repo = urlParts[4] ?? "";
+				const ref = urlParts[6] ?? "";
 				const path = urlParts.slice(7).join("/");
+
+				if (!owner || !repo || !ref || !path) {
+					throw new Error(`Invalid URL format: ${result.url}`);
+				}
 
 				log(
 					"DEBUG",
@@ -255,165 +258,80 @@ async function ghsearch(initialQuery?: string) {
 					continue;
 				}
 
-				// Get file extension for code fence
-				const fileExtension =
-					result.path.match(/\.[a-zA-Z0-9]+$/)?.[0]?.slice(1) || "";
 				const lines = fileContent.split("\n");
-				const totalLines = lines.length;
 
-				log("DEBUG", `Processing ${totalLines} lines of content`);
+				// Process each match to collect ranges
+				const ranges: [number, number][] =
+					result.text_matches?.flatMap((match) =>
+						match.matches.map((m) => m.indices),
+					) ?? [];
 
-				// If we have text matches, show relevant sections
-				if (result.text_matches?.length) {
-					log("DEBUG", `Found ${result.text_matches.length} text matches`);
+				if (ranges.length === 0) {
+					content += `\`\`\`\n${fileContent}\n\`\`\`\n\n---\n\n`;
+					continue;
+				}
 
-					// Track which lines we've shown to avoid duplicates
-					const shownLines = new Set<number>();
-					const CONTEXT_LINES = Math.max(25, MIN_CONTEXT / 2); // Lines of context before/after match
+				// Sort ranges by start position
+				ranges.sort((a, b) => a[0] - b[0]);
 
-					content += `\`\`\`${fileExtension}\n`;
-					content += `/* File: ${result.path} (${totalLines} lines total) */\n\n`;
+				// Merge overlapping ranges
+				const mergedRanges: [number, number][] = [];
+				const firstRange = ranges[0];
+				if (!firstRange) {
+					content += `\`\`\`\n${fileContent}\n\`\`\`\n\n---\n\n`;
+					continue;
+				}
 
-					// First, collect all line ranges we need to show
-					const ranges: Array<[number, number]> = [];
+				let currentRange: [number, number] = [...firstRange];
 
-					// Process each match to collect ranges
-					for (const match of result.text_matches) {
-						if (!match.fragment) {
-							log("DEBUG", "Skipping match with no fragment");
-							continue;
-						}
-						const matchLines = match.fragment.split("\n");
-						const firstLine = matchLines[0];
-						if (!firstLine) {
-							log("DEBUG", "Skipping match with empty first line");
-							continue;
-						}
+				for (let i = 1; i < ranges.length; i++) {
+					const nextRange = ranges[i];
+					if (!nextRange) continue;
 
-						let foundMatch = false;
-						for (let i = 0; i < lines.length - matchLines.length + 1; i++) {
-							const potentialMatch = lines
-								.slice(i, i + matchLines.length)
-								.join("\n");
-							if (potentialMatch.includes(firstLine)) {
-								// Found a match, add its range
-								const startLine = Math.max(0, i - CONTEXT_LINES);
-								const endLine = Math.min(
-									lines.length - 1,
-									i + matchLines.length + CONTEXT_LINES,
-								);
-								ranges.push([startLine, endLine]);
-								foundMatch = true;
-								log(
-									"DEBUG",
-									`Found match at line ${i}, range: ${startLine}-${endLine}`,
-								);
-								break;
-							}
-						}
-						if (!foundMatch) {
-							log(
-								"WARN",
-								`No matching content found for fragment: ${firstLine.slice(0, 50)}...`,
-							);
-						}
-					}
-
-					// Handle empty ranges - fallback to showing beginning of file
-					if (ranges.length === 0) {
-						log(
-							"WARN",
-							`No valid ranges found for ${result.path}, falling back to file start`,
-						);
-						const showLines = Math.max(
-							MIN_CONTEXT,
-							Math.floor(lines.length * 0.2),
-						);
-						content += lines.slice(0, showLines).join("\n");
-						if (lines.length > showLines) {
-							content += `\n\n/* ... skipping remaining ${lines.length - showLines} lines ... */`;
-						}
+					if (nextRange[0] <= currentRange[1]) {
+						currentRange[1] = Math.max(currentRange[1], nextRange[1]);
 					} else {
-						// Merge overlapping ranges
-						ranges.sort((a, b) => a[0] - b[0]);
-						const mergedRanges: Array<[number, number]> = [ranges[0]];
-
-						for (let i = 1; i < ranges.length; i++) {
-							const currentRange = mergedRanges[mergedRanges.length - 1];
-							const nextRange = ranges[i];
-							if (nextRange[0] <= currentRange[1] + 2) {
-								// Ranges overlap or are very close, merge them
-								currentRange[1] = Math.max(currentRange[1], nextRange[1]);
-							} else {
-								mergedRanges.push(nextRange);
-							}
-						}
-
-						log(
-							"DEBUG",
-							`Merged ${ranges.length} ranges into ${mergedRanges.length} ranges`,
-						);
-
-						// Now show the merged ranges
-						for (let i = 0; i < mergedRanges.length; i++) {
-							const [startLine, endLine] = mergedRanges[i];
-
-							if (startLine > 0) {
-								content += `/* ... skipping ${startLine} lines ... */\n\n`;
-							}
-
-							// Add content
-							for (let j = startLine; j <= endLine; j++) {
-								if (!shownLines.has(j)) {
-									content += `${lines[j]}\n`;
-									shownLines.add(j);
-								}
-							}
-
-							if (endLine < lines.length - 1) {
-								content += `\n/* ... skipping ${lines.length - endLine - 1} lines ... */\n`;
-							}
-
-							// Add extra newline between ranges if not the last range
-							if (i < mergedRanges.length - 1) {
-								content += "\n";
-							}
-						}
-					}
-				} else {
-					// Show first chunk of file with context about truncation
-					const showLines = Math.max(
-						MIN_CONTEXT,
-						Math.floor(lines.length * 0.2),
-					);
-					content += `\`\`\`${fileExtension}\n`;
-					content += `/* File: ${result.path} (${totalLines} lines total) */\n\n`;
-					content += lines.slice(0, showLines).join("\n");
-
-					if (lines.length > showLines) {
-						content += `\n\n/* ... skipping remaining ${lines.length - showLines} lines ... */`;
+						mergedRanges.push([...currentRange]);
+						currentRange = [...nextRange];
 					}
 				}
+				mergedRanges.push([...currentRange]);
 
-				content += "\n```\n\n---\n\n";
+				log(
+					"DEBUG",
+					`Merged ${ranges.length} ranges into ${mergedRanges.length} ranges`,
+				);
+
+				// Add content
+				content += `\`\`\`\n`;
+				for (const range of mergedRanges) {
+					const [startLine, endLine] = range;
+					for (let j = startLine; j <= endLine; j++) {
+						content += `${lines[j]}\n`;
+					}
+					content += "\n";
+				}
+				content += "```\n\n---\n\n";
 			} catch (error) {
-				// Enhanced error handling
-				let errorMessage = "Unknown error";
-				if (error.status === 403) {
-					errorMessage = "Rate limit exceeded or access denied";
-					log(
-						"ERROR",
-						`Rate limit exceeded or access denied for ${result.path}`,
-					);
-				} else if (error.status === 404) {
-					errorMessage = "File not found";
-					log("ERROR", `File not found: ${result.path}`);
+				const err = toErrorWithMessage(error);
+				if (err instanceof Error && "status" in err) {
+					const statusError = err as { status: number };
+					if (statusError.status === 403) {
+						log("ERROR", "Rate limit exceeded or authentication required");
+						content += `\`\`\`\n/* Rate limit exceeded or authentication required */\n\`\`\`\n\n---\n\n`;
+					} else if (statusError.status === 404) {
+						log("ERROR", "File not found or repository is private");
+						content += `\`\`\`\n/* File not found or repository is private */\n\`\`\`\n\n---\n\n`;
+					} else {
+						const errorMessage = `Error: ${err.message}`;
+						log("ERROR", `Failed to fetch content: ${err.message}`);
+						content += `\`\`\`\n/* ${errorMessage} */\n\`\`\`\n\n---\n\n`;
+					}
 				} else {
-					errorMessage = `Error: ${error.message || error}`;
-					log("ERROR", `Failed to fetch content: ${error.message || error}`);
+					log("ERROR", `Failed to fetch content: ${err.message}`);
+					content += `\`\`\`\n/* Error fetching content */\n\`\`\`\n\n---\n\n`;
 				}
-
-				content += `\`\`\`\n/* ${errorMessage} */\n\`\`\`\n\n---\n\n`;
+				continue;
 			}
 		}
 
@@ -436,10 +354,11 @@ async function ghsearch(initialQuery?: string) {
 
 		log("DEBUG", "ghsearch function completed");
 		p.outro("Search completed! 🎉");
-		return 0;
+		return resultCount;
 	} catch (error) {
-		log("ERROR", `GitHub search failed: ${error}`);
-		p.note(`${error}`, "Search failed");
+		const err = toErrorWithMessage(error);
+		log("ERROR", `GitHub search failed: ${err.message}`);
+		p.cancel("Search failed");
 		return 1;
 	}
 }
@@ -451,3 +370,27 @@ if (import.meta.url === import.meta.resolve("./ghsearch.ts")) {
 }
 
 export { ghsearch };
+
+// Helper type for error handling
+type ErrorWithMessage = {
+	message: string;
+};
+
+function isErrorWithMessage(error: unknown): error is ErrorWithMessage {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"message" in error &&
+		typeof (error as { message: unknown })["message"] === "string"
+	);
+}
+
+function toErrorWithMessage(maybeError: unknown): ErrorWithMessage {
+	if (isErrorWithMessage(maybeError)) return maybeError;
+
+	try {
+		return new Error(JSON.stringify(maybeError));
+	} catch {
+		return new Error(String(maybeError));
+	}
+}

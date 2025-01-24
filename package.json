@@ -22,7 +22,8 @@
   "devDependencies": {
     "@tsconfig/node23": "^23.0.0",
     "@tsconfig/strictest": "^2.0.5",
-    "@types/node": "^22.10.10"
+    "@types/node": "^22.10.10",
+    "typescript": "^5.7.3"
   },
   "dependencies": {
     "@clack/prompts": "^0.9.1",

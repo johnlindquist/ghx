@@ -14,18 +14,44 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node --loader ts-node/esm index.ts",
     "build": "tsc",
-    "prepublishOnly": "pnpm build"
+    "prepublishOnly": "pnpm build",
+    "commit": "cz",
+    "semantic-release": "semantic-release"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "release": {
+    "branches": ["main"],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/changelog",
+      "@semantic-release/npm",
+      "@semantic-release/github",
+      "@semantic-release/git"
+    ]
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.1",
+    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/release-notes-generator": "^14.0.3",
     "@tsconfig/node23": "^23.0.0",
     "@tsconfig/strictest": "^2.0.5",
     "@types/node": "^22.10.10",
+    "commitizen": "^4.3.1",
+    "cz-conventional-changelog": "^3.3.0",
     "typescript": "^5.7.3"
   },
   "dependencies": {

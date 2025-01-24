@@ -75,6 +75,9 @@ importers:
       cz-conventional-changelog:
         specifier: ^3.3.0
         version: 3.3.0(@types/node@22.10.10)(typescript@5.7.3)
+      semantic-release:
+        specifier: ^24.2.1
+        version: 24.2.1(typescript@5.7.3)
       typescript:
         specifier: ^5.7.3
         version: 5.7.3

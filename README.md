@@ -36,7 +36,45 @@ Without these requirements, the tool will fail to work due to GitHub API rate li
 ghx "your search query"
 ```
 
-The results will be saved to a markdown file in your home directory under `~/searches/` and will attempt to open in Cursor.
+The search query supports GitHub's code search qualifiers:
+
+- `filename:FILENAME` - Search in files with a specific name
+- `extension:EXT` - Search files with specific extension
+- `language:LANG` - Search in a specific programming language
+- `repo:OWNER/REPO` - Search in a specific repository
+- `path:PATH` - Search in a specific file path
+- `size:n` - Files that are n bytes in size
+- `fork:true/false` - Include or exclude forks
+
+Examples:
+```bash
+# Search for TypeScript config files
+ghx "filename:tsconfig.json strict"
+
+# Find React components
+ghx "language:typescript extension:tsx useState"
+
+# Search in specific repo
+ghx "repo:facebook/react useState"
+```
+
+### Search Results
+
+Results are saved as markdown files in your system's config directory:
+- macOS: `~/Library/Preferences/ghx/searches/`
+- Linux: `~/.config/ghx/searches/`
+- Windows: `%APPDATA%/ghx/searches/`
+
+### Editor Integration
+
+On first run, ghx will prompt you to:
+1. Choose whether to automatically open results in an editor
+2. Specify your preferred editor command (e.g., 'code', 'cursor', 'vim')
+
+You can change these settings by editing the config file in:
+- macOS: `~/Library/Preferences/ghx/config.json`
+- Linux: `~/.config/ghx/config.json`
+- Windows: `%APPDATA%/ghx/config.json`
 
 ## Features
 

@@ -273,6 +273,10 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 			try {
 				log("DEBUG", `Fetching content for ${result.path}`);
 
+				// Get file extension for syntax highlighting
+				const fileExt = result.path.split(".").pop() || "";
+				const lang = fileExt.toLowerCase();
+
 				// Parse owner, repo, and ref from URL
 				const urlParts = result.url.split("/");
 				const owner = urlParts[3] ?? "";
@@ -314,6 +318,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 					"DEBUG",
 					`Successfully fetched content for ${result.path} - Length: ${fileContent.length}`,
 				);
+				log("DEBUG", `Content preview: ${fileContent.slice(0, 100)}...`);
 
 				if (!fileContent.trim()) {
 					log("WARN", `Empty content received for ${result.path}`);
@@ -321,60 +326,30 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 					continue;
 				}
 
-				const lines = fileContent.split("\n");
+				// Process each match using the API's text_matches data
+				const matches = result.text_matches || [];
+				for (const match of matches) {
+					if (match.property === "content") {
+						let fragment = match.fragment;
 
-				// Process each match to collect ranges
-				const ranges: [number, number][] =
-					result.text_matches?.flatMap((match) =>
-						match.matches.map((m) => m.indices),
-					) ?? [];
+						// Sort matches by position (descending) to avoid position shifts
+						const sortedMatches = [...match.matches].sort(
+							(a, b) => b.indices[0] - a.indices[0],
+						);
 
-				if (ranges.length === 0) {
-					content += `\`\`\`\n${fileContent}\n\`\`\`\n\n---\n\n`;
-					continue;
-				}
+						// Highlight each match in the fragment
+						for (const m of sortedMatches) {
+							const [start, end] = m.indices;
+							const matchText = fragment.slice(start, end);
+							fragment = `${fragment.slice(0, start)}**${matchText}**${fragment.slice(end)}`;
+						}
 
-				// Sort ranges by start position
-				ranges.sort((a, b) => a[0] - b[0]);
-
-				// Merge overlapping ranges
-				const mergedRanges: [number, number][] = [];
-				const firstRange = ranges[0];
-				if (!firstRange) {
-					content += `\`\`\`\n${fileContent}\n\`\`\`\n\n---\n\n`;
-					continue;
-				}
-
-				let currentRange: [number, number] = [...firstRange];
-
-				for (let i = 1; i < ranges.length; i++) {
-					const nextRange = ranges[i];
-					if (!nextRange) continue;
-
-					if (nextRange[0] <= currentRange[1]) {
-						currentRange[1] = Math.max(currentRange[1], nextRange[1]);
-					} else {
-						mergedRanges.push([...currentRange]);
-						currentRange = [...nextRange];
+						// Add the fragment with matches highlighted in markdown bold
+						content += `\`\`\`${lang}\n${fragment}\n\`\`\`\n\n`;
 					}
 				}
-				mergedRanges.push([...currentRange]);
 
-				log(
-					"DEBUG",
-					`Merged ${ranges.length} ranges into ${mergedRanges.length} ranges`,
-				);
-
-				// Add content
-				content += "```\n";
-				for (const range of mergedRanges) {
-					const [startLine, endLine] = range;
-					const lineContent = lines.slice(startLine, endLine + 1).join("\n");
-					if (lineContent.trim()) {
-						content += `${lineContent}\n`;
-					}
-				}
-				content += "```\n\n---\n\n";
+				content += "---\n\n";
 			} catch (error) {
 				const err = toErrorWithMessage(error);
 				if (err instanceof Error && "status" in err) {
@@ -443,6 +418,35 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 // Run directly when loaded as CLI
 const args = process.argv.slice(2);
 if (args.length > 0) {
+	if (args.includes("--help") || args.includes("-h")) {
+		console.log(`
+GitHub Code Search CLI (ghx)
+
+Usage: ghx [search query]
+
+Search Qualifiers:
+  filename:FILENAME    Search for files with a specific name
+  extension:EXT       Search for files with a specific extension
+  language:LANG       Search for files in a specific language
+  repo:OWNER/REPO     Search in a specific repository
+  path:PATH           Search in a specific path
+  size:n             Search for files of a specific size
+  fork:true/false    Include or exclude forked repositories
+
+Examples:
+  ghx "filename:tsconfig.json strict"
+  ghx "language:typescript extension:tsx useState"
+  ghx "repo:facebook/react useState"
+
+Results are saved in:
+  macOS:   ~/Library/Preferences/ghx/searches/
+  Linux:   ~/.config/ghx/searches/
+  Windows: %APPDATA%/ghx/searches/
+
+For more information, visit: https://github.com/johnlindquist/ghx
+`);
+		process.exit(0);
+	}
 	ghsearch(args.join(" ")).catch(console.error);
 }
 

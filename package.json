@@ -1,6 +1,6 @@
 {
   "name": "@johnlindquist/ghx",
-  "version": "1.0.6",
+  "version": "1.0.0",
   "description": "GitHub search and examples CLI tool",
   "main": "dist/index.js",
   "type": "module",

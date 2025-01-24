@@ -1,0 +1,22 @@
+{
+  "name": "github-examples",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node --env-file=.env --no-warnings index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@tsconfig/node23": "^23.0.0",
+    "@tsconfig/strictest": "^2.0.5",
+    "@types/node": "^22.10.10"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}

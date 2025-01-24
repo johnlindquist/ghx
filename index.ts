@@ -369,7 +369,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 }
 
 // If running directly (not imported)
-if (import.meta.url === import.meta.resolve("./ghsearch.ts")) {
+if (import.meta.url === import.meta.resolve("./index.ts")) {
 	const args = process.argv.slice(2);
 	ghsearch(args.join(" ")).catch(console.error);
 }

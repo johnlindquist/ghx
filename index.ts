@@ -8,6 +8,7 @@ import { mkdirp } from "mkdirp";
 import { writeFile } from "node:fs/promises";
 import { execSync } from "node:child_process";
 import * as p from "@clack/prompts";
+import fetch from "node-fetch";
 
 // Type for GitHub search result
 type SearchResult = {
@@ -146,6 +147,9 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 	// Initialize Octokit with auth token
 	const octokit = new Octokit({
 		auth: token,
+		request: {
+			fetch,
+		},
 	});
 
 	try {

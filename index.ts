@@ -368,9 +368,9 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 	}
 }
 
-// If running directly (not imported)
-if (import.meta.url === import.meta.resolve("./index.ts")) {
-	const args = process.argv.slice(2);
+// Run directly when loaded as CLI
+const args = process.argv.slice(2);
+if (args.length > 0) {
 	ghsearch(args.join(" ")).catch(console.error);
 }
 

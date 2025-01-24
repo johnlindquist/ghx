@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { Octokit } from "@octokit/rest";
 import { format } from "date-fns";
 import { homedir } from "node:os";

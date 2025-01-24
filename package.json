@@ -2,7 +2,7 @@
   "name": "@johnlindquist/ghx",
   "version": "1.0.1",
   "description": "GitHub search and examples CLI tool",
-  "main": "index.js",
+  "main": "dist/index.js",
   "type": "module",
   "bin": {
     "ghx": "./dist/index.js"
@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node index.ts",
+    "dev": "node --loader ts-node/esm index.ts",
     "build": "tsc",
     "prepublishOnly": "pnpm build"
   },

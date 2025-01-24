@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node --env-file=.env --no-warnings index.ts",
-    "ghsearch": "node --env-file=.env --no-warnings ghsearch.ts"
+    "dev": "node index.ts"
   },
   "keywords": [],
   "author": "",

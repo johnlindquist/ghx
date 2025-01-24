@@ -243,7 +243,8 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 					fileContent = response.data;
 				} else {
 					log("WARN", `Unexpected response type for ${result.path}`);
-					content += `\`\`\`\n/* Unable to fetch content: Invalid response type */\n\`\`\`\n\n---\n\n`;
+					content +=
+						"```\n/* Unable to fetch content: Invalid response type */\n```\n\n---\n\n";
 					continue;
 				}
 
@@ -254,7 +255,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 
 				if (!fileContent.trim()) {
 					log("WARN", `Empty content received for ${result.path}`);
-					content += `\`\`\`\n/* Empty file */\n\`\`\`\n\n---\n\n`;
+					content += "```\n/* Empty file */\n```\n\n---\n\n";
 					continue;
 				}
 
@@ -267,7 +268,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 					) ?? [];
 
 				if (ranges.length === 0) {
-					content += `\`\`\`\n${fileContent}\n\`\`\`\n\n---\n\n`;
+					content += "```\n${fileContent}\n```\n\n---\n\n";
 					continue;
 				}
 
@@ -278,7 +279,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 				const mergedRanges: [number, number][] = [];
 				const firstRange = ranges[0];
 				if (!firstRange) {
-					content += `\`\`\`\n${fileContent}\n\`\`\`\n\n---\n\n`;
+					content += "```\n${fileContent}\n```\n\n---\n\n";
 					continue;
 				}
 
@@ -303,7 +304,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 				);
 
 				// Add content
-				content += `\`\`\`\n`;
+				content += "```\n";
 				for (const range of mergedRanges) {
 					const [startLine, endLine] = range;
 					for (let j = startLine; j <= endLine; j++) {
@@ -318,10 +319,12 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 					const statusError = err as { status: number };
 					if (statusError.status === 403) {
 						log("ERROR", "Rate limit exceeded or authentication required");
-						content += `\`\`\`\n/* Rate limit exceeded or authentication required */\n\`\`\`\n\n---\n\n`;
+						content +=
+							"```\n/* Rate limit exceeded or authentication required */\n```\n\n---\n\n";
 					} else if (statusError.status === 404) {
 						log("ERROR", "File not found or repository is private");
-						content += `\`\`\`\n/* File not found or repository is private */\n\`\`\`\n\n---\n\n`;
+						content +=
+							"```\n/* File not found or repository is private */\n```\n\n---\n\n";
 					} else {
 						const errorMessage = `Error: ${err.message}`;
 						log("ERROR", `Failed to fetch content: ${err.message}`);
@@ -329,7 +332,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 					}
 				} else {
 					log("ERROR", `Failed to fetch content: ${err.message}`);
-					content += `\`\`\`\n/* Error fetching content */\n\`\`\`\n\n---\n\n`;
+					content += "```\n/* Error fetching content */\n```\n\n---\n\n";
 				}
 				continue;
 			}
@@ -381,7 +384,7 @@ function isErrorWithMessage(error: unknown): error is ErrorWithMessage {
 		typeof error === "object" &&
 		error !== null &&
 		"message" in error &&
-		typeof (error as { message: unknown })["message"] === "string"
+		typeof error.message === "string"
 	);
 }
 

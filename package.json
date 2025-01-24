@@ -16,6 +16,9 @@
     "build": "tsc",
     "prepublishOnly": "pnpm build"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

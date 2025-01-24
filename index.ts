@@ -270,7 +270,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 					) ?? [];
 
 				if (ranges.length === 0) {
-					content += "```\n${fileContent}\n```\n\n---\n\n";
+					content += `\`\`\`\n${fileContent}\n\`\`\`\n\n---\n\n`;
 					continue;
 				}
 
@@ -281,7 +281,7 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 				const mergedRanges: [number, number][] = [];
 				const firstRange = ranges[0];
 				if (!firstRange) {
-					content += "```\n${fileContent}\n```\n\n---\n\n";
+					content += `\`\`\`\n${fileContent}\n\`\`\`\n\n---\n\n`;
 					continue;
 				}
 

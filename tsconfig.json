@@ -9,7 +9,8 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
-    "emitDeclarationOnly": true
+    "emitDeclarationOnly": true,
+    "declaration": true
   },
   "include": ["*.ts"],
   "exclude": ["node_modules", "dist"],  

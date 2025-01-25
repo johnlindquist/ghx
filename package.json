@@ -58,6 +58,8 @@
     "@tsconfig/node23": "^23.0.0",
     "@tsconfig/strictest": "^2.0.5",
     "@types/node": "^22.10.10",
+    "@types/node-fetch": "^2.6.11",
+    "@types/yargs": "^17.0.32",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
     "husky": "^9.1.7",
@@ -72,6 +74,7 @@
     "dotenv": "^16.4.7",
     "env-paths": "^3.0.0",
     "mkdirp": "^3.0.1",
+    "node-fetch": "^3.3.2",
     "sanitize-filename": "^1.6.3",
     "yargs": "^17.7.2",
     "zx": "^8.3.0"

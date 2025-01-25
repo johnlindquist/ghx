@@ -19,8 +19,9 @@
     "build": "tsc -p tsconfig.build.json",
     "build:check": "tsc --noEmit",
     "prepublishOnly": "pnpm build",
+    "prepare": "husky",
     "precommit": "pnpm build:check",
-    "commit": "pnpm precommit && cz",
+    "commit": "cz",
     "semantic-release": "semantic-release"
   },
   "publishConfig": {
@@ -58,6 +59,7 @@
     "@types/node": "^22.10.10",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
+    "husky": "^9.1.7",
     "semantic-release": "^24.2.1",
     "typescript": "^5.7.3"
   },

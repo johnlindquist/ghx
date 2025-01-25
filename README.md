@@ -57,15 +57,6 @@ CLI Flags:
 - `--size <n>` - Files that are n bytes in size
 - `--fork` - Include or exclude forked repositories
 
-GitHub Qualifiers (Alternative Syntax):
-- `filename:FILENAME`
-- `extension:EXT`
-- `language:LANG`
-- `repo:OWNER/REPO`
-- `path:PATH`
-- `size:n`
-- `fork:true/false`
-
 Examples:
 ```bash
 # Search for TypeScript config files

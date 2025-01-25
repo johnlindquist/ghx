@@ -524,10 +524,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 		.option("pipe", {
 			type: "boolean",
 			describe: "Output results directly to stdout",
+			alias: "p",
 		})
 		.option("debug", {
 			type: "boolean",
 			describe: "Output code fence contents for testing",
+			alias: "d",
 		})
 		.option("limit", {
 			alias: "L",
@@ -551,30 +553,37 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 		.option("repo", {
 			type: "string",
 			describe: "Search in a specific repository (owner/repo)",
+			alias: "r",
 		})
 		.option("path", {
 			type: "string",
 			describe: "Search in a specific path",
+			alias: "P",
 		})
 		.option("language", {
 			type: "string",
 			describe: "Search for files in a specific language",
+			alias: "l",
 		})
 		.option("extension", {
 			type: "string",
 			describe: "Search for files with a specific extension",
+			alias: "e",
 		})
 		.option("filename", {
 			type: "string",
 			describe: "Search for files with a specific name",
+			alias: "n",
 		})
 		.option("size", {
 			type: "string",
 			describe: "Search for files of a specific size",
+			alias: "s",
 		})
 		.option("fork", {
 			type: "boolean",
 			describe: "Include or exclude forked repositories",
+			alias: "F",
 		})
 		.example(
 			"$0 'filename:tsconfig.json strict'",

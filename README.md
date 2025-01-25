@@ -33,8 +33,18 @@ Without these requirements, the tool will fail to work due to GitHub API rate li
 ## Usage
 
 ```bash
-ghx "your search query" [--pipe]
+ghx "your search query" [options]
 ```
+
+### Options
+
+- `--pipe` - Output results directly to stdout
+- `--debug` - Output code fence contents for testing
+- `--limit, -L <n>` - Maximum number of results to fetch (default: 50)
+- `--context, -c <n>` - Number of context lines around matches (default: 20)
+- `--max-filename, -f <n>` - Maximum length of generated filenames (default: 50)
+
+### Search Qualifiers
 
 The search query supports GitHub's code search qualifiers:
 
@@ -62,6 +72,18 @@ ghx --pipe "filename:tsconfig.json strict"
 
 # Pipe results to a file
 ghx --pipe "language:typescript useState" > results.md
+
+# Get more results
+ghx --limit 100 "filename:package.json"
+
+# Show more context around matches
+ghx --context 50 "language:typescript useState"
+
+# Allow longer filenames
+ghx --max-filename 100 "filename:package.json"
+
+# Combine options
+ghx -L 100 -c 30 -f 75 "your search"
 ```
 
 ### Search Results

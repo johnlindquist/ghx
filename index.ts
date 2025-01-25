@@ -20,6 +20,10 @@ const config = new Conf({
 const configPath = envPaths("ghx").config;
 const searchesPath = join(configPath, "searches");
 
+const DEFAULT_SEARCH_LIMIT = 50;
+const MAX_FILENAME_LENGTH = 50;
+const CONTEXT_LINES = 20;
+
 type EditorConfig = {
 	command: string | null;
 	skipEditor: boolean;
@@ -127,6 +131,9 @@ async function ghsearch(
 	initialQuery?: string,
 	pipe = false,
 	debug = false,
+	limit = DEFAULT_SEARCH_LIMIT,
+	maxFilenameLength = MAX_FILENAME_LENGTH,
+	contextLines = CONTEXT_LINES,
 ): Promise<number> {
 	const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
 	const logDir = join(configPath, "logs");
@@ -194,7 +201,7 @@ async function ghsearch(
 		.replace(/\s+/g, "-") // Replace spaces with dashes
 		.replace(/[^a-zA-Z0-9-_.]/g, "") // Remove any other special chars
 		.replace(/^-+|-+$/g, "") // Remove leading/trailing dashes
-		.slice(0, 50); // Limit length
+		.slice(0, maxFilenameLength); // Limit length
 
 	log("DEBUG", `Sanitized filename: ${sanitizedQuery}`);
 
@@ -217,7 +224,7 @@ async function ghsearch(
 
 		const searchResponse = await octokit.rest.search.code({
 			q: query,
-			per_page: 30,
+			per_page: limit,
 			headers: {
 				Accept: "application/vnd.github.v3.text-match+json",
 			},
@@ -358,7 +365,7 @@ async function ghsearch(
 						// Get 20 lines before
 						let contextStart = startPos;
 						let lineCount = 0;
-						while (lineCount < 20 && contextStart > 0) {
+						while (lineCount < contextLines && contextStart > 0) {
 							contextStart = fileContent.lastIndexOf("\n", contextStart - 1);
 							if (contextStart === -1) {
 								contextStart = 0;
@@ -370,7 +377,10 @@ async function ghsearch(
 						// Get 20 lines after
 						let contextEnd = endPos;
 						lineCount = 0;
-						while (lineCount < 20 && contextEnd < fileContent.length) {
+						while (
+							lineCount < contextLines &&
+							contextEnd < fileContent.length
+						) {
 							const nextNewline = fileContent.indexOf("\n", contextEnd + 1);
 							if (nextNewline === -1) {
 								contextEnd = fileContent.length;
@@ -489,9 +499,12 @@ GitHub Code Search CLI (ghx)
 Usage: ghx [options] [search query]
 
 Options:
-  --help, -h         Show this help message
-  --pipe            Output results directly to stdout
-  --debug           Output code fence contents for testing
+  --help, -h                    Show this help message
+  --pipe                       Output results directly to stdout
+  --debug                      Output code fence contents for testing
+  --limit, -L <n>              Maximum number of results to fetch (default: ${DEFAULT_SEARCH_LIMIT})
+  --max-filename, -f <n>       Maximum length of generated filenames (default: ${MAX_FILENAME_LENGTH})
+  --context, -c <n>            Number of context lines around matches (default: ${CONTEXT_LINES})
 
 Search Qualifiers:
   filename:FILENAME    Search for files with a specific name
@@ -507,6 +520,9 @@ Examples:
   ghx --pipe "language:typescript useState" > results.md
   ghx "repo:facebook/react useState"
   ghx --debug "language:typescript useState"
+  ghx --limit 100 "filename:package.json"
+  ghx --context 50 "language:typescript useState"
+  ghx --max-filename 100 "filename:package.json"
 
 Results are saved in:
   macOS:   ~/Library/Preferences/ghx/searches/
@@ -520,13 +536,52 @@ For more information, visit: https://github.com/johnlindquist/ghx
 
 	const pipeIndex = args.indexOf("--pipe");
 	const debugIndex = args.indexOf("--debug");
+	const limitIndex =
+		args.indexOf("--limit") !== -1
+			? args.indexOf("--limit")
+			: args.indexOf("-L");
+	const maxFilenameIndex =
+		args.indexOf("--max-filename") !== -1
+			? args.indexOf("--max-filename")
+			: args.indexOf("-f");
+	const contextIndex =
+		args.indexOf("--context") !== -1
+			? args.indexOf("--context")
+			: args.indexOf("-c");
+
 	const pipe = pipeIndex !== -1;
 	const debug = debugIndex !== -1;
+	const limit =
+		limitIndex !== -1 && args[limitIndex + 1]
+			? parseInt(args[limitIndex + 1] as string, 10) || DEFAULT_SEARCH_LIMIT
+			: DEFAULT_SEARCH_LIMIT;
+	const maxFilename =
+		maxFilenameIndex !== -1 && args[maxFilenameIndex + 1]
+			? parseInt(args[maxFilenameIndex + 1] as string, 10) ||
+				MAX_FILENAME_LENGTH
+			: MAX_FILENAME_LENGTH;
+	const context =
+		contextIndex !== -1 && args[contextIndex + 1]
+			? parseInt(args[contextIndex + 1] as string, 10) || CONTEXT_LINES
+			: CONTEXT_LINES;
+
 	const query = args
-		.filter((_arg, i) => i !== pipeIndex && i !== debugIndex)
+		.filter(
+			(_arg, i) =>
+				i !== pipeIndex &&
+				i !== debugIndex &&
+				i !== limitIndex &&
+				i !== (limitIndex !== -1 ? limitIndex + 1 : -1) &&
+				i !== maxFilenameIndex &&
+				i !== (maxFilenameIndex !== -1 ? maxFilenameIndex + 1 : -1) &&
+				i !== contextIndex &&
+				i !== (contextIndex !== -1 ? contextIndex + 1 : -1),
+		)
 		.join(" ");
 
-	ghsearch(query, pipe, debug).catch(console.error);
+	ghsearch(query, pipe, debug, limit, maxFilename, context).catch(
+		console.error,
+	);
 }
 
 // Helper type for error handling

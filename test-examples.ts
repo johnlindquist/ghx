@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { RESULTS_SAVED_MARKER } from "./constants.ts";
+import { RESULTS_SAVED_MARKER } from "./constants.js";
 
 type SearchResult = {
 	description: string;

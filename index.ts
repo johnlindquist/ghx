@@ -13,7 +13,7 @@ import envPaths from "env-paths";
 import { parse } from "node:path";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { RESULTS_SAVED_MARKER } from "./constants.ts";
+import { RESULTS_SAVED_MARKER } from "./constants.js";
 
 const config = new Conf({
 	projectName: "ghx",

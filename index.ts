@@ -127,7 +127,7 @@ async function getGitHubToken(): Promise<string> {
 	}
 }
 
-async function ghsearch(
+async function ghx(
 	initialQuery?: string,
 	pipe = false,
 	debug = false,
@@ -137,7 +137,7 @@ async function ghsearch(
 ): Promise<number> {
 	const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
 	const logDir = join(configPath, "logs");
-	const logFile = join(logDir, `ghsearch-${timestamp}.log`);
+	const logFile = join(logDir, `ghx-${timestamp}.log`);
 
 	// Ensure directories exist
 	await mkdirp(logDir);
@@ -150,7 +150,7 @@ async function ghsearch(
 		writeFile(logFile, `${logMessage}\n`, { flag: "a" }).catch(console.error);
 	}
 
-	log("DEBUG", "Starting ghsearch function");
+	log("DEBUG", "Starting ghx function");
 
 	// Get GitHub token first
 	const token = await getGitHubToken();
@@ -178,7 +178,7 @@ async function ghsearch(
 			return searchQuery;
 		})());
 
-	log("DEBUG", `Command: ghsearch ${query}`);
+	log("DEBUG", `Command: ghx ${query}`);
 	log("INFO", `Processing query: ${query}`);
 
 	// Check for problematic characters
@@ -478,7 +478,7 @@ async function ghsearch(
 			);
 		}
 
-		log("DEBUG", "ghsearch function completed");
+		log("DEBUG", "ghx function completed");
 		p.outro("Search completed! 🎉");
 		return resultCount;
 	} catch (error) {
@@ -553,16 +553,17 @@ For more information, visit: https://github.com/johnlindquist/ghx
 	const debug = debugIndex !== -1;
 	const limit =
 		limitIndex !== -1 && args[limitIndex + 1]
-			? parseInt(args[limitIndex + 1] as string, 10) || DEFAULT_SEARCH_LIMIT
+			? Number.parseInt(args[limitIndex + 1] as string, 10) ||
+				DEFAULT_SEARCH_LIMIT
 			: DEFAULT_SEARCH_LIMIT;
 	const maxFilename =
 		maxFilenameIndex !== -1 && args[maxFilenameIndex + 1]
-			? parseInt(args[maxFilenameIndex + 1] as string, 10) ||
+			? Number.parseInt(args[maxFilenameIndex + 1] as string, 10) ||
 				MAX_FILENAME_LENGTH
 			: MAX_FILENAME_LENGTH;
 	const context =
 		contextIndex !== -1 && args[contextIndex + 1]
-			? parseInt(args[contextIndex + 1] as string, 10) || CONTEXT_LINES
+			? Number.parseInt(args[contextIndex + 1] as string, 10) || CONTEXT_LINES
 			: CONTEXT_LINES;
 
 	const query = args
@@ -579,9 +580,7 @@ For more information, visit: https://github.com/johnlindquist/ghx
 		)
 		.join(" ");
 
-	ghsearch(query, pipe, debug, limit, maxFilename, context).catch(
-		console.error,
-	);
+	ghx(query, pipe, debug, limit, maxFilename, context).catch(console.error);
 }
 
 // Helper type for error handling

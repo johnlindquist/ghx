@@ -122,7 +122,7 @@ async function getGitHubToken(): Promise<string> {
 	}
 }
 
-async function ghsearch(initialQuery?: string): Promise<number> {
+async function ghsearch(initialQuery?: string, pipe = false): Promise<number> {
 	const debug = true;
 	const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
 	const logDir = join(configPath, "logs");
@@ -377,6 +377,11 @@ async function ghsearch(initialQuery?: string): Promise<number> {
 		await writeFile(resultsFile, content);
 		s2.stop("Results processed");
 
+		if (pipe) {
+			console.log(content);
+			return resultCount;
+		}
+
 		// Try to open in configured editor
 		const editorConfig = await getEditorCommand();
 
@@ -422,7 +427,11 @@ if (args.length > 0) {
 		console.log(`
 GitHub Code Search CLI (ghx)
 
-Usage: ghx [search query]
+Usage: ghx [options] [search query]
+
+Options:
+  --help, -h         Show this help message
+  --pipe            Output results directly to stdout
 
 Search Qualifiers:
   filename:FILENAME    Search for files with a specific name
@@ -435,7 +444,7 @@ Search Qualifiers:
 
 Examples:
   ghx "filename:tsconfig.json strict"
-  ghx "language:typescript extension:tsx useState"
+  ghx --pipe "language:typescript useState" > results.md
   ghx "repo:facebook/react useState"
 
 Results are saved in:
@@ -447,7 +456,14 @@ For more information, visit: https://github.com/johnlindquist/ghx
 `);
 		process.exit(0);
 	}
-	ghsearch(args.join(" ")).catch(console.error);
+
+	const pipeIndex = args.indexOf("--pipe");
+	const pipe = pipeIndex !== -1;
+	const query = pipe
+		? args.filter((_arg, i) => i !== pipeIndex).join(" ")
+		: args.join(" ");
+
+	ghsearch(query, pipe).catch(console.error);
 }
 
 // Helper type for error handling

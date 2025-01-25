@@ -33,7 +33,7 @@ Without these requirements, the tool will fail to work due to GitHub API rate li
 ## Usage
 
 ```bash
-ghx "your search query"
+ghx "your search query" [--pipe]
 ```
 
 The search query supports GitHub's code search qualifiers:
@@ -56,6 +56,12 @@ ghx "language:typescript extension:tsx useState"
 
 # Search in specific repo
 ghx "repo:facebook/react useState"
+
+# Search and pipe results to stdout
+ghx --pipe "filename:tsconfig.json strict"
+
+# Pipe results to a file
+ghx --pipe "language:typescript useState" > results.md
 ```
 
 ### Search Results

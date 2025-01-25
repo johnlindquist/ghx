@@ -16,9 +16,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node --loader ts-node/esm index.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
+    "build:check": "tsc --noEmit",
     "prepublishOnly": "pnpm build",
-    "commit": "cz",
+    "precommit": "pnpm build:check",
+    "commit": "pnpm precommit && cz",
     "semantic-release": "semantic-release"
   },
   "publishConfig": {

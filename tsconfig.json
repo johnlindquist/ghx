@@ -8,7 +8,8 @@
     "outDir": "dist",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "emitDeclarationOnly": true
   },
   "include": ["*.ts"],
   "exclude": ["node_modules", "dist"],  

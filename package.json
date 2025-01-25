@@ -18,9 +18,10 @@
     "dev": "node --loader ts-node/esm index.ts",
     "build": "tsc",
     "build:check": "tsc --noEmit",
+    "verify:bin": "pnpm build && [ -f dist/index.js ] || (echo 'dist/index.js not found' && exit 1)",
     "prepublishOnly": "pnpm build",
     "prepare": "husky",
-    "precommit": "pnpm build:check",
+    "precommit": "pnpm build:check && pnpm verify:bin",
     "commit": "cz",
     "semantic-release": "semantic-release"
   },

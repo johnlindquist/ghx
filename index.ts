@@ -10,6 +10,7 @@ import * as p from "@clack/prompts";
 import fetch from "node-fetch";
 import Conf from "conf";
 import envPaths from "env-paths";
+import { parse } from "node:path";
 
 const config = new Conf({
 	projectName: "ghx",
@@ -122,8 +123,11 @@ async function getGitHubToken(): Promise<string> {
 	}
 }
 
-async function ghsearch(initialQuery?: string, pipe = false): Promise<number> {
-	const debug = true;
+async function ghsearch(
+	initialQuery?: string,
+	pipe = false,
+	debug = false,
+): Promise<number> {
 	const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
 	const logDir = join(configPath, "logs");
 	const logFile = join(logDir, `ghsearch-${timestamp}.log`);
@@ -133,7 +137,6 @@ async function ghsearch(initialQuery?: string, pipe = false): Promise<number> {
 	await mkdirp(searchesPath);
 
 	function log(level: string, message: string) {
-		if (level === "DEBUG" && !debug) return;
 		const logMessage = `[${level}] ${message}`;
 		console.log(logMessage);
 		// Append to log file asynchronously
@@ -274,8 +277,9 @@ async function ghsearch(initialQuery?: string, pipe = false): Promise<number> {
 				log("DEBUG", `Fetching content for ${result.path}`);
 
 				// Get file extension for syntax highlighting
-				const fileExt = result.path.split(".").pop() || "";
-				const lang = fileExt.toLowerCase();
+				const { ext, name } = parse(result.path);
+				// Handle special cases like .json.md, .json.ejs
+				const lang = name.endsWith(".json") ? "json" : ext.slice(1) || "";
 
 				// Parse owner, repo, and ref from URL
 				const urlParts = result.url.split("/");
@@ -330,22 +334,76 @@ async function ghsearch(initialQuery?: string, pipe = false): Promise<number> {
 				const matches = result.text_matches || [];
 				for (const match of matches) {
 					if (match.property === "content") {
-						let fragment = match.fragment;
+						// Find the fragment in the full file content
+						const fragmentIndex = fileContent.indexOf(match.fragment);
+						if (fragmentIndex === -1) {
+							log(
+								"WARN",
+								`Could not find fragment in file content for ${result.path}`,
+							);
+							continue;
+						}
+
+						// Find the start of the line containing the fragment
+						let startPos = fileContent.lastIndexOf("\n", fragmentIndex);
+						if (startPos === -1) startPos = 0;
+
+						// Find the end of the line containing the fragment
+						let endPos = fileContent.indexOf(
+							"\n",
+							fragmentIndex + match.fragment.length,
+						);
+						if (endPos === -1) endPos = fileContent.length;
+
+						// Get 20 lines before
+						let contextStart = startPos;
+						let lineCount = 0;
+						while (lineCount < 20 && contextStart > 0) {
+							contextStart = fileContent.lastIndexOf("\n", contextStart - 1);
+							if (contextStart === -1) {
+								contextStart = 0;
+								break;
+							}
+							lineCount++;
+						}
+
+						// Get 20 lines after
+						let contextEnd = endPos;
+						lineCount = 0;
+						while (lineCount < 20 && contextEnd < fileContent.length) {
+							const nextNewline = fileContent.indexOf("\n", contextEnd + 1);
+							if (nextNewline === -1) {
+								contextEnd = fileContent.length;
+								break;
+							}
+							contextEnd = nextNewline;
+							lineCount++;
+						}
+
+						// Extract the context with the fragment
+						let fragment = fileContent.slice(contextStart, contextEnd);
 
 						// Sort matches by position (descending) to avoid position shifts
 						const sortedMatches = [...match.matches].sort(
 							(a, b) => b.indices[0] - a.indices[0],
 						);
 
-						// Highlight each match in the fragment
+						// Adjust match indices based on contextStart
+						const fragmentOffset = fragmentIndex - contextStart;
 						for (const m of sortedMatches) {
 							const [start, end] = m.indices;
-							const matchText = fragment.slice(start, end);
-							fragment = `${fragment.slice(0, start)}**${matchText}**${fragment.slice(end)}`;
+							const matchText = match.fragment.slice(start, end);
+							const adjustedStart = fragmentOffset + start;
+							const adjustedEnd = fragmentOffset + end;
+							fragment = `${fragment.slice(0, adjustedStart)}**${matchText}**${fragment.slice(adjustedEnd)}`;
 						}
 
 						// Add the fragment with matches highlighted in markdown bold
-						content += `\`\`\`${lang}\n${fragment}\n\`\`\`\n\n`;
+						content += `\`\`\`${lang}\n${fragment.trim()}\n\`\`\`\n\n`;
+						if (debug) {
+							log("DEBUG", "Code fence content:");
+							log("DEBUG", fragment.trim());
+						}
 					}
 				}
 
@@ -433,6 +491,7 @@ Usage: ghx [options] [search query]
 Options:
   --help, -h         Show this help message
   --pipe            Output results directly to stdout
+  --debug           Output code fence contents for testing
 
 Search Qualifiers:
   filename:FILENAME    Search for files with a specific name
@@ -447,6 +506,7 @@ Examples:
   ghx "filename:tsconfig.json strict"
   ghx --pipe "language:typescript useState" > results.md
   ghx "repo:facebook/react useState"
+  ghx --debug "language:typescript useState"
 
 Results are saved in:
   macOS:   ~/Library/Preferences/ghx/searches/
@@ -459,12 +519,14 @@ For more information, visit: https://github.com/johnlindquist/ghx
 	}
 
 	const pipeIndex = args.indexOf("--pipe");
+	const debugIndex = args.indexOf("--debug");
 	const pipe = pipeIndex !== -1;
-	const query = pipe
-		? args.filter((_arg, i) => i !== pipeIndex).join(" ")
-		: args.join(" ");
+	const debug = debugIndex !== -1;
+	const query = args
+		.filter((_arg, i) => i !== pipeIndex && i !== debugIndex)
+		.join(" ");
 
-	ghsearch(query, pipe).catch(console.error);
+	ghsearch(query, pipe, debug).catch(console.error);
 }
 
 // Helper type for error handling

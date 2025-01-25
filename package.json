@@ -64,6 +64,7 @@
     "@clack/prompts": "^0.9.1",
     "@octokit/rest": "^21.1.0",
     "@types/node-fetch": "^2.6.12",
+    "@types/yargs": "^17.0.33",
     "conf": "^13.1.0",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
@@ -71,6 +72,7 @@
     "mkdirp": "^3.0.1",
     "node-fetch": "^3.3.2",
     "sanitize-filename": "^1.6.3",
+    "yargs": "^17.7.2",
     "zx": "^8.3.0"
   }
 }

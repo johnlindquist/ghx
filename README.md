@@ -46,44 +46,54 @@ ghx "your search query" [options]
 
 ### Search Qualifiers
 
-The search query supports GitHub's code search qualifiers:
+You can use either CLI flags or GitHub's search qualifiers:
 
-- `filename:FILENAME` - Search in files with a specific name
-- `extension:EXT` - Search files with specific extension
-- `language:LANG` - Search in a specific programming language
-- `repo:OWNER/REPO` - Search in a specific repository
-- `path:PATH` - Search in a specific file path
-- `size:n` - Files that are n bytes in size
-- `fork:true/false` - Include or exclude forks
+CLI Flags:
+- `--filename <name>` - Search in files with a specific name
+- `--extension <ext>` - Search files with specific extension
+- `--language <lang>` - Search in a specific programming language
+- `--repo <owner/repo>` - Search in a specific repository
+- `--path <path>` - Search in a specific file path
+- `--size <n>` - Files that are n bytes in size
+- `--fork` - Include or exclude forked repositories
+
+GitHub Qualifiers (Alternative Syntax):
+- `filename:FILENAME`
+- `extension:EXT`
+- `language:LANG`
+- `repo:OWNER/REPO`
+- `path:PATH`
+- `size:n`
+- `fork:true/false`
 
 Examples:
 ```bash
 # Search for TypeScript config files
-ghx "filename:tsconfig.json strict"
+ghx --filename tsconfig.json "strict"
 
 # Find React components
-ghx "language:typescript extension:tsx useState"
+ghx --language typescript --extension tsx "useState"
 
 # Search in specific repo
-ghx "repo:facebook/react useState"
+ghx --repo facebook/react "useState"
 
 # Search and pipe results to stdout
-ghx --pipe "filename:tsconfig.json strict"
+ghx --pipe --filename tsconfig.json "strict"
 
 # Pipe results to a file
-ghx --pipe "language:typescript useState" > results.md
+ghx --pipe --language typescript "useState" > results.md
 
 # Get more results
-ghx --limit 100 "filename:package.json"
+ghx --limit 100 --filename package.json "dependencies"
 
 # Show more context around matches
-ghx --context 50 "language:typescript useState"
+ghx --context 50 --language typescript "useState"
 
 # Allow longer filenames
-ghx --max-filename 100 "filename:package.json"
+ghx --max-filename 100 --filename package.json "devDependencies"
 
 # Combine options
-ghx -L 100 -c 30 -f 75 "your search"
+ghx -L 100 -c 30 -f 75 --repo facebook/react "hooks"
 ```
 
 ### Search Results

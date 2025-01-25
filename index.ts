@@ -11,6 +11,9 @@ import fetch from "node-fetch";
 import Conf from "conf";
 import envPaths from "env-paths";
 import { parse } from "node:path";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
+import { RESULTS_SAVED_MARKER } from "./constants.ts";
 
 const config = new Conf({
 	projectName: "ghx",
@@ -252,10 +255,23 @@ async function ghx(
 				`Date: ${new Date().toString()}`,
 				"",
 				"No results found for this query.",
+				"",
+				"Note: If you're searching a specific repository and getting no results:",
+				"- The repository might be too new",
+				"- The repository might not be indexed yet by GitHub's code search",
+				"- The repository might be empty or private",
+				"",
+				"Try:",
+				"- Waiting a few minutes if the repository was just created",
+				"- Verifying the repository exists and is public",
+				"- Using broader search terms",
 			].join("\n");
 
 			await writeFile(resultsFile, content);
-			p.note("No results found", "Try a different search query");
+			p.note(
+				"No results found. The repository might not be indexed yet.",
+				"Try a different search query",
+			);
 			return 0;
 		}
 
@@ -447,7 +463,7 @@ async function ghx(
 
 		if (pipe) {
 			console.log(content);
-			console.log(`\nResults saved to: ${resultsFile}`);
+			console.log(`\n${RESULTS_SAVED_MARKER} ${resultsFile}`);
 			return resultCount;
 		}
 
@@ -458,7 +474,7 @@ async function ghx(
 			try {
 				execSync(`${editorConfig.command} "${resultsFile}"`);
 				p.note(
-					`Results saved to ${resultsFile}\nTo change your editor, edit: ${join(configPath, "config.json")}`,
+					`${RESULTS_SAVED_MARKER} ${resultsFile}\nTo change your editor, edit: ${join(configPath, "config.json")}`,
 					"Opening in editor",
 				);
 			} catch (error) {
@@ -467,13 +483,13 @@ async function ghx(
 					`Failed to open results in editor: ${editorConfig.command}`,
 				);
 				p.note(
-					`Results saved to ${resultsFile}\nTo change your editor, edit: ${join(configPath, "config.json")}`,
+					`${RESULTS_SAVED_MARKER} ${resultsFile}\nTo change your editor, edit: ${join(configPath, "config.json")}`,
 					`You can open manually with: ${editorConfig.command}`,
 				);
 			}
 		} else if (editorConfig.skipEditor) {
 			p.note(
-				`Results saved to ${resultsFile}\nTo change your editor, edit: ${join(configPath, "config.json")}`,
+				`${RESULTS_SAVED_MARKER} ${resultsFile}\nTo change your editor, edit: ${join(configPath, "config.json")}`,
 				"Editor disabled",
 			);
 		}
@@ -484,103 +500,133 @@ async function ghx(
 	} catch (error) {
 		const err = toErrorWithMessage(error);
 		log("ERROR", `GitHub search failed: ${err.message}`);
+
+		// Handle query parsing error specifically
+		if (err.message.includes("ERROR_TYPE_QUERY_PARSING_FATAL")) {
+			console.error(
+				"\n⚠️  Invalid search query format. Please check the query syntax.",
+			);
+			console.error(
+				"ℹ️  See: https://docs.github.com/rest/search/search#search-code\n",
+			);
+			process.exit(1);
+		}
+
 		p.cancel("Search failed");
 		return 1;
 	}
 }
 
 // Run directly when loaded as CLI
-const args = process.argv.slice(2);
-if (args.length > 0) {
-	if (args.includes("--help") || args.includes("-h")) {
-		console.log(`
-GitHub Code Search CLI (ghx)
-
-Usage: ghx [options] [search query]
-
-Options:
-  --help, -h                    Show this help message
-  --pipe                       Output results directly to stdout
-  --debug                      Output code fence contents for testing
-  --limit, -L <n>              Maximum number of results to fetch (default: ${DEFAULT_SEARCH_LIMIT})
-  --max-filename, -f <n>       Maximum length of generated filenames (default: ${MAX_FILENAME_LENGTH})
-  --context, -c <n>            Number of context lines around matches (default: ${CONTEXT_LINES})
-
-Search Qualifiers:
-  filename:FILENAME    Search for files with a specific name
-  extension:EXT       Search for files with a specific extension
-  language:LANG       Search for files in a specific language
-  repo:OWNER/REPO     Search in a specific repository
-  path:PATH           Search in a specific path
-  size:n             Search for files of a specific size
-  fork:true/false    Include or exclude forked repositories
-
-Examples:
-  ghx "filename:tsconfig.json strict"
-  ghx --pipe "language:typescript useState" > results.md
-  ghx "repo:facebook/react useState"
-  ghx --debug "language:typescript useState"
-  ghx --limit 100 "filename:package.json"
-  ghx --context 50 "language:typescript useState"
-  ghx --max-filename 100 "filename:package.json"
-
-Results are saved in:
-  macOS:   ~/Library/Preferences/ghx/searches/
-  Linux:   ~/.config/ghx/searches/
-  Windows: %APPDATA%/ghx/searches/
-
-For more information, visit: https://github.com/johnlindquist/ghx
-`);
-		process.exit(0);
-	}
-
-	const pipeIndex = args.indexOf("--pipe");
-	const debugIndex = args.indexOf("--debug");
-	const limitIndex =
-		args.indexOf("--limit") !== -1
-			? args.indexOf("--limit")
-			: args.indexOf("-L");
-	const maxFilenameIndex =
-		args.indexOf("--max-filename") !== -1
-			? args.indexOf("--max-filename")
-			: args.indexOf("-f");
-	const contextIndex =
-		args.indexOf("--context") !== -1
-			? args.indexOf("--context")
-			: args.indexOf("-c");
-
-	const pipe = pipeIndex !== -1;
-	const debug = debugIndex !== -1;
-	const limit =
-		limitIndex !== -1 && args[limitIndex + 1]
-			? Number.parseInt(args[limitIndex + 1] as string, 10) ||
-				DEFAULT_SEARCH_LIMIT
-			: DEFAULT_SEARCH_LIMIT;
-	const maxFilename =
-		maxFilenameIndex !== -1 && args[maxFilenameIndex + 1]
-			? Number.parseInt(args[maxFilenameIndex + 1] as string, 10) ||
-				MAX_FILENAME_LENGTH
-			: MAX_FILENAME_LENGTH;
-	const context =
-		contextIndex !== -1 && args[contextIndex + 1]
-			? Number.parseInt(args[contextIndex + 1] as string, 10) || CONTEXT_LINES
-			: CONTEXT_LINES;
-
-	const query = args
-		.filter(
-			(_arg, i) =>
-				i !== pipeIndex &&
-				i !== debugIndex &&
-				i !== limitIndex &&
-				i !== (limitIndex !== -1 ? limitIndex + 1 : -1) &&
-				i !== maxFilenameIndex &&
-				i !== (maxFilenameIndex !== -1 ? maxFilenameIndex + 1 : -1) &&
-				i !== contextIndex &&
-				i !== (contextIndex !== -1 ? contextIndex + 1 : -1),
+if (import.meta.url === `file://${process.argv[1]}`) {
+	const argv = yargs(hideBin(process.argv))
+		.usage("Usage: $0 [options] [search query]")
+		.option("pipe", {
+			type: "boolean",
+			describe: "Output results directly to stdout",
+		})
+		.option("debug", {
+			type: "boolean",
+			describe: "Output code fence contents for testing",
+		})
+		.option("limit", {
+			alias: "L",
+			type: "number",
+			describe: "Maximum number of results to fetch",
+			default: DEFAULT_SEARCH_LIMIT,
+		})
+		.option("max-filename", {
+			alias: "f",
+			type: "number",
+			describe: "Maximum length of generated filenames",
+			default: MAX_FILENAME_LENGTH,
+		})
+		.option("context", {
+			alias: "c",
+			type: "number",
+			describe: "Number of context lines around matches",
+			default: CONTEXT_LINES,
+		})
+		// GitHub search qualifiers
+		.option("repo", {
+			type: "string",
+			describe: "Search in a specific repository (owner/repo)",
+		})
+		.option("path", {
+			type: "string",
+			describe: "Search in a specific path",
+		})
+		.option("language", {
+			type: "string",
+			describe: "Search for files in a specific language",
+		})
+		.option("extension", {
+			type: "string",
+			describe: "Search for files with a specific extension",
+		})
+		.option("filename", {
+			type: "string",
+			describe: "Search for files with a specific name",
+		})
+		.option("size", {
+			type: "string",
+			describe: "Search for files of a specific size",
+		})
+		.option("fork", {
+			type: "boolean",
+			describe: "Include or exclude forked repositories",
+		})
+		.example(
+			"$0 'filename:tsconfig.json strict'",
+			"Search for tsconfig.json files containing 'strict'",
 		)
+		.example(
+			"$0 --repo facebook/react 'useState'",
+			"Search for 'useState' in the React repository",
+		)
+		.example(
+			"$0 --language typescript 'interface'",
+			"Search for 'interface' in TypeScript files",
+		)
+		.help()
+		.alias("help", "h")
+		.parseSync();
+
+	// Build the query string from options and remaining args
+	const qualifiers = [
+		argv.repo && `repo:${argv.repo}`,
+		argv.path && `path:${argv.path}`,
+		argv.language && `language:${argv.language}`,
+		argv.extension && `extension:${argv.extension}`,
+		argv.filename && `filename:${argv.filename}`,
+		argv.size && `size:${argv.size}`,
+		argv.fork !== undefined && `fork:${argv.fork}`,
+	]
+		.filter(Boolean)
 		.join(" ");
 
-	ghx(query, pipe, debug, limit, maxFilename, context).catch(console.error);
+	// Ensure search terms are properly quoted if they contain spaces
+	const searchTerms = argv._.map((term) =>
+		term.includes(" ") ? `"${term}"` : term,
+	).join(" ");
+
+	// Combine qualifiers and search terms, ensuring proper spacing
+	const query = [qualifiers, searchTerms]
+		.filter(Boolean)
+		.join(" ")
+		.trim()
+		.replace(/\s+/g, " "); // Normalize spaces
+
+	console.log("DEBUG: Final query:", query); // Add debug output
+
+	ghx(
+		query,
+		argv.pipe,
+		argv.debug,
+		argv.limit,
+		argv["max-filename"],
+		argv.context,
+	).catch(console.error);
 }
 
 // Helper type for error handling

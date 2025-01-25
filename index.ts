@@ -616,7 +616,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
 	// Ensure search terms are properly quoted if they contain spaces
 	const searchTerms = argv._.map((term) =>
-		term.includes(" ") ? `"${term}"` : term,
+		String(term).includes(" ") ? `"${term}"` : term,
 	).join(" ");
 
 	// Combine qualifiers and search terms, ensuring proper spacing

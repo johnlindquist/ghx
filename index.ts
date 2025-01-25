@@ -379,6 +379,7 @@ async function ghsearch(initialQuery?: string, pipe = false): Promise<number> {
 
 		if (pipe) {
 			console.log(content);
+			console.log(`\nResults saved to: ${resultsFile}`);
 			return resultCount;
 		}
 

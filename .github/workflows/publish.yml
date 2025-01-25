@@ -27,6 +27,10 @@ jobs:
           version: 8
       - run: pnpm install
       - run: pnpm build
+      - name: Verify CLI
+        run: |
+          pnpm link --global
+          ghx --help || exit 1
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

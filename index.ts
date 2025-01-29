@@ -518,125 +518,124 @@ async function ghx(
 }
 
 // Run directly when loaded as CLI
-if (import.meta.url === `file://${process.argv[1]}`) {
-	const argv = yargs(hideBin(process.argv))
-		.usage("Usage: $0 [options] [search query]")
-		.option("pipe", {
-			type: "boolean",
-			describe: "Output results directly to stdout",
-			alias: "p",
-		})
-		.option("debug", {
-			type: "boolean",
-			describe: "Output code fence contents for testing",
-			alias: "d",
-		})
-		.option("limit", {
-			alias: "L",
-			type: "number",
-			describe: "Maximum number of results to fetch",
-			default: DEFAULT_SEARCH_LIMIT,
-		})
-		.option("max-filename", {
-			alias: "f",
-			type: "number",
-			describe: "Maximum length of generated filenames",
-			default: MAX_FILENAME_LENGTH,
-		})
-		.option("context", {
-			alias: "c",
-			type: "number",
-			describe: "Number of context lines around matches",
-			default: CONTEXT_LINES,
-		})
-		// GitHub search qualifiers
-		.option("repo", {
-			type: "string",
-			describe: "Search in a specific repository (owner/repo)",
-			alias: "r",
-		})
-		.option("path", {
-			type: "string",
-			describe: "Search in a specific path",
-			alias: "P",
-		})
-		.option("language", {
-			type: "string",
-			describe: "Search for files in a specific language",
-			alias: "l",
-		})
-		.option("extension", {
-			type: "string",
-			describe: "Search for files with a specific extension",
-			alias: "e",
-		})
-		.option("filename", {
-			type: "string",
-			describe: "Search for files with a specific name",
-			alias: "n",
-		})
-		.option("size", {
-			type: "string",
-			describe: "Search for files of a specific size",
-			alias: "s",
-		})
-		.option("fork", {
-			type: "boolean",
-			describe: "Include or exclude forked repositories",
-			alias: "F",
-		})
-		.example(
-			"$0 'filename:tsconfig.json strict'",
-			"Search for tsconfig.json files containing 'strict'",
-		)
-		.example(
-			"$0 --repo facebook/react 'useState'",
-			"Search for 'useState' in the React repository",
-		)
-		.example(
-			"$0 --language typescript 'interface'",
-			"Search for 'interface' in TypeScript files",
-		)
-		.help()
-		.alias("help", "h")
-		.parseSync();
 
-	// Build the query string from options and remaining args
-	const qualifiers = [
-		argv.repo && `repo:${argv.repo}`,
-		argv.path && `path:${argv.path}`,
-		argv.language && `language:${argv.language}`,
-		argv.extension && `extension:${argv.extension}`,
-		argv.filename && `filename:${argv.filename}`,
-		argv.size && `size:${argv.size}`,
-		argv.fork !== undefined && `fork:${argv.fork}`,
-	]
-		.filter(Boolean)
-		.join(" ");
+const argv = yargs(hideBin(process.argv))
+	.usage("Usage: $0 [options] [search query]")
+	.option("pipe", {
+		type: "boolean",
+		describe: "Output results directly to stdout",
+		alias: "p",
+	})
+	.option("debug", {
+		type: "boolean",
+		describe: "Output code fence contents for testing",
+		alias: "d",
+	})
+	.option("limit", {
+		alias: "L",
+		type: "number",
+		describe: "Maximum number of results to fetch",
+		default: DEFAULT_SEARCH_LIMIT,
+	})
+	.option("max-filename", {
+		alias: "f",
+		type: "number",
+		describe: "Maximum length of generated filenames",
+		default: MAX_FILENAME_LENGTH,
+	})
+	.option("context", {
+		alias: "c",
+		type: "number",
+		describe: "Number of context lines around matches",
+		default: CONTEXT_LINES,
+	})
+	// GitHub search qualifiers
+	.option("repo", {
+		type: "string",
+		describe: "Search in a specific repository (owner/repo)",
+		alias: "r",
+	})
+	.option("path", {
+		type: "string",
+		describe: "Search in a specific path",
+		alias: "P",
+	})
+	.option("language", {
+		type: "string",
+		describe: "Search for files in a specific language",
+		alias: "l",
+	})
+	.option("extension", {
+		type: "string",
+		describe: "Search for files with a specific extension",
+		alias: "e",
+	})
+	.option("filename", {
+		type: "string",
+		describe: "Search for files with a specific name",
+		alias: "n",
+	})
+	.option("size", {
+		type: "string",
+		describe: "Search for files of a specific size",
+		alias: "s",
+	})
+	.option("fork", {
+		type: "boolean",
+		describe: "Include or exclude forked repositories",
+		alias: "F",
+	})
+	.example(
+		"$0 'filename:tsconfig.json strict'",
+		"Search for tsconfig.json files containing 'strict'",
+	)
+	.example(
+		"$0 --repo facebook/react 'useState'",
+		"Search for 'useState' in the React repository",
+	)
+	.example(
+		"$0 --language typescript 'interface'",
+		"Search for 'interface' in TypeScript files",
+	)
+	.help()
+	.alias("help", "h")
+	.parseSync();
 
-	// Ensure search terms are properly quoted if they contain spaces
-	const searchTerms = argv._.map((term: string | number) =>
-		String(term).includes(" ") ? `"${term}"` : term,
-	).join(" ");
+// Build the query string from options and remaining args
+const qualifiers = [
+	argv.repo && `repo:${argv.repo}`,
+	argv.path && `path:${argv.path}`,
+	argv.language && `language:${argv.language}`,
+	argv.extension && `extension:${argv.extension}`,
+	argv.filename && `filename:${argv.filename}`,
+	argv.size && `size:${argv.size}`,
+	argv.fork !== undefined && `fork:${argv.fork}`,
+]
+	.filter(Boolean)
+	.join(" ");
 
-	// Combine qualifiers and search terms, ensuring proper spacing
-	const query = [qualifiers, searchTerms]
-		.filter(Boolean)
-		.join(" ")
-		.trim()
-		.replace(/\s+/g, " "); // Normalize spaces
+// Ensure search terms are properly quoted if they contain spaces
+const searchTerms = argv._.map((term: string | number) =>
+	String(term).includes(" ") ? `"${term}"` : term,
+).join(" ");
 
-	console.log("DEBUG: Final query:", query); // Add debug output
+// Combine qualifiers and search terms, ensuring proper spacing
+const query = [qualifiers, searchTerms]
+	.filter(Boolean)
+	.join(" ")
+	.trim()
+	.replace(/\s+/g, " "); // Normalize spaces
 
-	ghx(
-		query,
-		argv.pipe,
-		argv.debug,
-		argv.limit,
-		argv["max-filename"],
-		argv.context,
-	).catch(console.error);
-}
+console.log("DEBUG: Final query:", query); // Add debug output
+
+ghx(
+	query,
+	argv.pipe,
+	argv.debug,
+	argv.limit,
+	argv["max-filename"],
+	argv.context,
+).catch(console.error);
 
 // Helper type for error handling
 type ErrorWithMessage = {

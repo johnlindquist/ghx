@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node --loader ts-node/esm index.ts",
+    "dev": "node --experimental-strip-types index.ts",
     "build": "tsc",
     "build:check": "tsc --noEmit",
     "verify:bin": "pnpm build && [ -f dist/index.js ] || (echo 'dist/index.js not found' && exit 1)",

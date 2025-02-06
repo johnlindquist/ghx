@@ -1,1 +1,2 @@
 pnpm build:check
+pnpm test

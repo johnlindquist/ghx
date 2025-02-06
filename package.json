@@ -5,7 +5,7 @@
     "type": "git",
     "url": "https://github.com/johnlindquist/ghx.git"
   },
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "type": "module",
   "bin": {
     "ghx": "./dist/index.js"
@@ -14,7 +14,7 @@
     "dist"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run --bail 1",
     "dev": "node --experimental-strip-types index.ts",
     "build": "tsc",
     "build:check": "tsc --noEmit",
@@ -62,12 +62,15 @@
     "@types/yargs": "^17.0.32",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
+    "execa": "^9.5.2",
     "husky": "^9.1.7",
     "semantic-release": "^24.2.1",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
   },
   "dependencies": {
     "@clack/prompts": "^0.9.1",
+    "@johnlindquist/ghx": "^1.5.2",
     "@octokit/rest": "^21.1.0",
     "conf": "^13.1.0",
     "date-fns": "^4.1.0",

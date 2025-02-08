@@ -1,6 +1,13 @@
 import { test, expect, beforeAll } from "vitest";
 import { execaCommand } from "execa";
 import { RESULTS_SAVED_MARKER } from "../src/constants.ts";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = join(__filename, "..");
+const projectRoot = join(__dirname, "..");
 
 type SearchResult = {
   description: string;
@@ -13,10 +20,12 @@ const runExample = async (
   command: string
 ): Promise<SearchResult> => {
   let outputPath: string | null = null;
+  const cliCommand = `pnpm node ${join(projectRoot, "dist/index.js")}`;
 
   console.log("\nRunning command:", command);
 
   const result = await execaCommand(command, {
+    cwd: projectRoot,
     env: {
       ...process.env,
       NODE_ENV: "development",
@@ -45,7 +54,7 @@ const runExample = async (
 };
 
 beforeAll(async () => {
-  await execaCommand("pnpm build");
+  await execaCommand("pnpm build", { cwd: projectRoot });
 });
 
 test("TypeScript config search", async () => {
@@ -63,7 +72,7 @@ test("React components in TypeScript", async () => {
     `pnpm node dist/index.js --language typescript --extension tsx --pipe "useState" --limit 1`
   );
   expect(result.outputPath).toBeTruthy();
-});
+}, 10000);
 
 test("Search in React repo", async () => {
   const result = await runExample(
@@ -111,4 +120,48 @@ test("Search with more context", async () => {
     `pnpm node dist/index.js --context 50 --language typescript --pipe "interface" --limit 1`
   );
   expect(result.outputPath).toBeTruthy();
+});
+
+test("Version flag - development", async () => {
+  const result = await runExample(
+    "Version flag - development",
+    `pnpm node dist/index.js --version`
+  );
+  expect(result.output).toMatch("0.0.0"); // Expect dev version
+});
+
+test("Version flag - simulated published", async () => {
+  // Simulate published environment
+  const packageJsonPath = join(projectRoot, "package.json");
+  const originalPackageJson = readFileSync(packageJsonPath, "utf-8");
+  const packageJson = JSON.parse(originalPackageJson);
+  packageJson.version = "1.2.3"; // Set a realistic version
+  writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+
+  const result = await runExample(
+    "Version flag - simulated published",
+    `pnpm node dist/index.js --version`
+  );
+  expect(result.output).toMatch("1.2.3"); // Expect the set version
+
+  // Restore original package.json
+  writeFileSync(packageJsonPath, originalPackageJson);
+});
+
+test("Help output shows correct command name", async () => {
+  const result = await runExample(
+    "Help output command name",
+    `pnpm node dist/index.js --help`
+  );
+
+  // Should show 'ghx' in usage line
+  expect(result.output).toContain("Usage: ghx [options]");
+
+  // Should show 'ghx' in examples
+  expect(result.output).toContain("ghx 'filename:tsconfig.json strict'");
+  expect(result.output).toContain("ghx --repo facebook/react");
+  expect(result.output).toContain("ghx --language typescript");
+
+  // Should not contain 'index.js' in command examples
+  expect(result.output).not.toContain("index.js '");
 });

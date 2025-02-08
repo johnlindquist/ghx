@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-
 import { Octokit } from "@octokit/rest";
 import { format } from "date-fns";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { mkdirp } from "mkdirp";
 import { writeFile } from "node:fs/promises";
 import { execSync } from "node:child_process";
@@ -14,9 +13,11 @@ import { parse } from "node:path";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { RESULTS_SAVED_MARKER } from "./constants.js";
+import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 
 const config = new Conf({
-  projectName: "ghx",
+  projectName: "johnlindquist/ghx",
 });
 
 // Get the config path for the current platform
@@ -26,6 +27,12 @@ const searchesPath = join(configPath, "searches");
 const DEFAULT_SEARCH_LIMIT = 50;
 const MAX_FILENAME_LENGTH = 50;
 const CONTEXT_LINES = 20;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, "../package.json"), "utf8")
+);
 
 type EditorConfig = {
   command: string | null;
@@ -426,7 +433,7 @@ async function ghx(
               fragment = `${fragment.slice(
                 0,
                 adjustedStart
-              )}**${matchText}**${fragment.slice(adjustedEnd)}`;
+              )}${matchText}${fragment.slice(adjustedEnd)}`;
             }
 
             // Add the fragment with matches highlighted in markdown bold
@@ -533,6 +540,8 @@ async function ghx(
 
 // Build the query string from options and remaining args
 const argv = yargs(hideBin(process.argv))
+  .scriptName("ghx")
+  .version(packageJson.version)
   .usage("Usage: $0 [options] [search query]")
   .option("pipe", {
     type: "boolean",

@@ -234,25 +234,46 @@ async function ghx(
     const s = p.spinner();
     s.start("Searching GitHub");
 
-    const searchResponse = await octokit.rest.search.code({
-      q: query,
-      per_page: limit,
-      headers: {
-        Accept: "application/vnd.github.v3.text-match+json",
-      },
-    });
+    let allResults: SearchResult[] = [];
+    let page = 1;
+    let remaining = limit;
 
-    const results = searchResponse.data.items.map((item) => ({
-      path: item.path,
-      repository: {
-        nameWithOwner: item.repository.full_name,
-        url: item.repository.html_url,
-      },
-      url: item.html_url,
-      text_matches: item.text_matches,
-    })) as SearchResult[];
+    while (remaining > 0) {
+      // GitHub API per_page is capped at 100
+      const perPage = remaining > 100 ? 100 : remaining;
 
-    const resultCount = results.length;
+      const searchResponse = await octokit.rest.search.code({
+        q: query,
+        per_page: perPage,
+        page,
+        headers: {
+          Accept: "application/vnd.github.v3.text-match+json",
+        },
+      });
+
+      const results = searchResponse.data.items.map((item) => ({
+        path: item.path,
+        repository: {
+          nameWithOwner: item.repository.full_name,
+          url: item.repository.html_url,
+        },
+        url: item.html_url,
+        text_matches: item.text_matches,
+      })) as SearchResult[];
+
+      // Append the fetched results
+      allResults = allResults.concat(results);
+
+      // Break if fewer results than requested were returned (no more data)
+      if (results.length < perPage) {
+        break;
+      }
+
+      remaining -= results.length;
+      page++;
+    }
+
+    const resultCount = allResults.length;
 
     s.stop(`Found ${resultCount} results`);
     log("DEBUG", `Found ${resultCount} results`);
@@ -301,7 +322,7 @@ async function ghx(
     ].join("\n");
 
     // Process each result
-    for (const result of results) {
+    for (const result of allResults) {
       content += `### [${result.repository.nameWithOwner}](${result.repository.url})\n\n`;
       content += `File: [${result.path}](${result.url})\n\n`;
 

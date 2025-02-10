@@ -11,9 +11,6 @@ importers:
       '@clack/prompts':
         specifier: ^0.9.1
         version: 0.9.1
-      '@johnlindquist/ghx':
-        specifier: ^1.5.2
-        version: 1.5.2
       '@octokit/rest':
         specifier: ^21.1.0
         version: 21.1.0
@@ -41,9 +38,6 @@ importers:
       yargs:
         specifier: ^17.7.2
         version: 17.7.2
-      zx:
-        specifier: ^8.3.0
-        version: 8.3.0
     devDependencies:
       '@semantic-release/changelog':
         specifier: ^6.0.3
@@ -289,10 +283,6 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
-
-  '@johnlindquist/ghx@1.5.2':
-    resolution: {integrity: sha512-coa1rGu+oUYVRQhwK/2nVNtTTRtolRAXPQzaonE1iZ9saSJWmRUCHmz/XJlEx5oTU6tYIiiGUEvbAGUhfy6mrg==}
-    hasBin: true
 
   '@jridgewell/sourcemap-codec@1.5.0':
     resolution: {integrity: sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ==}
@@ -550,12 +540,6 @@ packages:
 
   '@types/estree@1.0.6':
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
-
-  '@types/fs-extra@11.0.4':
-    resolution: {integrity: sha512-yTbItCNreRooED33qjunPthRcSjERP1r4MqCZc7wv0u2sUkzTFp45tgUfS5+r7FrZPdmCCNflLhVSP/o+SemsQ==}
-
-  '@types/jsonfile@6.1.4':
-    resolution: {integrity: sha512-D5qGUYwjvnNNextdU59/+fI+spnwtTFmyQP0h+PfIOSkNfpU6AOICUOkm4i0OnSk+NyjdPJrxCDro0sJsWlRpQ==}
 
   '@types/node-fetch@2.6.12':
     resolution: {integrity: sha512-8nneRWKCg3rMtF69nLQJnOYUcbafYeFSjqkw3jCRLsqkWFlHaoQrr5mXmofFGOx3DKn7UfmBMyov8ySvLRVldA==}
@@ -2267,11 +2251,6 @@ packages:
     resolution: {integrity: sha512-GQHQqAopRhwU8Kt1DDM8NjibDXHC8eoh1erhGAJPEyveY9qqVeXvVikNKrDz69sHowPMorbPUrH/mx8c50eiBQ==}
     engines: {node: '>=18'}
 
-  zx@8.3.0:
-    resolution: {integrity: sha512-L8mY3yfJwo3a8ZDD6f9jZzAcRWJZYcV8GauZmBxLB/aSTwaMzMIEVpPp2Kyx+7yF0gdvuxKnMxAZRft9UCawiw==}
-    engines: {node: '>= 12.17.0'}
-    hasBin: true
-
 snapshots:
 
   '@babel/code-frame@7.26.2':
@@ -2412,20 +2391,6 @@ snapshots:
 
   '@esbuild/win32-x64@0.24.2':
     optional: true
-
-  '@johnlindquist/ghx@1.5.2':
-    dependencies:
-      '@clack/prompts': 0.9.1
-      '@octokit/rest': 21.1.0
-      conf: 13.1.0
-      date-fns: 4.1.0
-      dotenv: 16.4.7
-      env-paths: 3.0.0
-      mkdirp: 3.0.1
-      node-fetch: 3.3.2
-      sanitize-filename: 1.6.3
-      yargs: 17.7.2
-      zx: 8.3.0
 
   '@jridgewell/sourcemap-codec@1.5.0': {}
 
@@ -2698,17 +2663,6 @@ snapshots:
     optional: true
 
   '@types/estree@1.0.6': {}
-
-  '@types/fs-extra@11.0.4':
-    dependencies:
-      '@types/jsonfile': 6.1.4
-      '@types/node': 22.10.10
-    optional: true
-
-  '@types/jsonfile@6.1.4':
-    dependencies:
-      '@types/node': 22.10.10
-    optional: true
 
   '@types/node-fetch@2.6.12':
     dependencies:
@@ -4339,8 +4293,3 @@ snapshots:
       yargs-parser: 21.1.1
 
   yoctocolors@2.1.1: {}
-
-  zx@8.3.0:
-    optionalDependencies:
-      '@types/fs-extra': 11.0.4
-      '@types/node': 22.10.10

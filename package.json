@@ -71,7 +71,6 @@
   },
   "dependencies": {
     "@clack/prompts": "^0.9.1",
-    "@johnlindquist/ghx": "^1.5.2",
     "@octokit/rest": "^21.1.0",
     "conf": "^13.1.0",
     "date-fns": "^4.1.0",
@@ -80,7 +79,6 @@
     "mkdirp": "^3.0.1",
     "node-fetch": "^3.3.2",
     "sanitize-filename": "^1.6.3",
-    "yargs": "^17.7.2",
-    "zx": "^8.3.0"
+    "yargs": "^17.7.2"
   }
 }

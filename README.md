@@ -90,9 +90,9 @@ ghx -L 100 -c 30 -f 75 --repo facebook/react "hooks"
 ### Search Results
 
 Results are saved as markdown files in your system's config directory:
-- macOS: `~/Library/Preferences/ghx/searches/`
-- Linux: `~/.config/ghx/searches/`
-- Windows: `%APPDATA%/ghx/searches/`
+- macOS: `~/Library/Preferences/johnlindquist/ghx-nodejs/searches/`
+- Linux: `~/.config/johnlindquist/ghx-nodejs/searches/`
+- Windows: `%APPDATA%/johnlindquist/ghx-nodejs/searches/`
 
 ### Editor Integration
 
@@ -101,9 +101,9 @@ On first run, ghx will prompt you to:
 2. Specify your preferred editor command (e.g., 'code', 'cursor', 'vim')
 
 You can change these settings by editing the config file in:
-- macOS: `~/Library/Preferences/ghx/config.json`
-- Linux: `~/.config/ghx/config.json`
-- Windows: `%APPDATA%/ghx/config.json`
+- macOS: `~/Library/Preferences/johnlindquist/ghx-nodejs/config.json`
+- Linux: `~/.config/johnlindquist/ghx-nodejs/config.json`
+- Windows: `%APPDATA%/johnlindquist/ghx-nodejs/config.json`
 
 ## Features
 

@@ -8,7 +8,6 @@ import { execSync } from "node:child_process";
 import * as p from "@clack/prompts";
 import fetch from "node-fetch";
 import Conf from "conf";
-import envPaths from "env-paths";
 import { parse } from "node:path";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -20,8 +19,8 @@ const config = new Conf({
   projectName: "johnlindquist/ghx",
 });
 
-// Get the config path for the current platform
-const configPath = envPaths("ghx").config;
+// Get the config path directly from Conf instance
+const configPath = dirname(config.path);
 const searchesPath = join(configPath, "searches");
 
 const DEFAULT_SEARCH_LIMIT = 50;

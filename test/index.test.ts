@@ -1,3 +1,5 @@
+// NOTE: If you update or add tests that demonstrate new command usage,
+// please update the examples in src/index.ts yargs configuration accordingly.
 import { test, expect, beforeAll } from "vitest";
 import { execaCommand } from "execa";
 import { RESULTS_SAVED_MARKER } from "../src/constants.ts";
@@ -157,14 +159,57 @@ test("Help output shows correct command name", async () => {
   // Should show 'ghx' in usage line
   expect(result.output).toContain("Usage: ghx [options]");
 
-  // Should show 'ghx' in examples
-  expect(result.output).toContain("ghx 'filename:tsconfig.json strict'");
-  expect(result.output).toContain("ghx --repo facebook/react");
-  expect(result.output).toContain("ghx --language typescript");
+  // Should show 'ghx' in some current examples
+  expect(result.output).toContain("ghx 'useState'"); // Simple query example
+  expect(result.output).toContain("ghx --repo facebook/react \"useState\""); // Repo example
+  expect(result.output).toContain("ghx -l typescript -e tsx \"useState\""); // Language/extension example
+  expect(result.output).toContain('ghx -l javascript "const OR let"'); // OR example
 
   // Should not contain 'index.js' in command examples
   expect(result.output).not.toContain("index.js '");
 });
+
+test("Search with multiple terms", async () => {
+  const result = await runExample(
+    "Search with multiple terms",
+    `pnpm node dist/index.js --language typescript --pipe "async function" --limit 1`
+  );
+  // Expect the output to contain the search term highlight
+  expect(result.output).toContain("**async** **function**");
+  expect(result.outputPath).toBeTruthy();
+});
+
+test("Search multiple separate terms (implicit AND)", async () => {
+  const result = await runExample(
+    "Search multiple separate terms",
+    `pnpm node dist/index.js --language typescript --pipe "import test" --limit 1` // GitHub implicitly ANDs these
+  );
+  // Expect results containing both terms (highlighting might vary)
+  expect(result.output).toContain("**import**");
+  expect(result.output).toContain("**test**");
+  expect(result.outputPath).toBeTruthy();
+});
+
+test("Search with OR operator", async () => {
+  const result = await runExample(
+    "Search with OR operator",
+    `pnpm node dist/index.js --language javascript --pipe "const OR let" --limit 1`
+  );
+  // Expect results containing either term
+  expect(result.output).toMatch(/(\*\*const\*\*|\*\*let\*\*)/);
+  expect(result.outputPath).toBeTruthy();
+});
+
+test("Search with NOT operator", async () => {
+  const result = await runExample(
+    "Search with NOT operator",
+    `pnpm node dist/index.js --repo microsoft/vscode --language css --pipe "color NOT background-color" --limit 1`
+  );
+  // Expect results containing 'color' but not 'background-color'
+  expect(result.output).toContain("**color**");
+  expect(result.output).not.toContain("background-color");
+  expect(result.outputPath).toBeTruthy();
+}, 60000); // Increase timeout as it might be a broader search initially
 
 test.skip("Supports --limit up to 200 results", async () => {
   // Using a broad query (in TypeScript files) expected to yield many results.

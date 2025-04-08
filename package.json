@@ -24,7 +24,9 @@
     "prepare": "husky",
     "precommit": "pnpm build:check && pnpm verify:bin",
     "commit": "cz",
-    "semantic-release": "semantic-release"
+    "semantic-release": "semantic-release",
+    "test:search-and": "pnpm node dist/index.js --repo microsoft/vscode --language typescript --limit 1 --pipe \"test AND expect\"",
+    "test:search-or": "pnpm node dist/index.js --repo microsoft/vscode --language javascript --limit 1 --pipe \"error OR warning\""
   },
   "publishConfig": {
     "access": "public"

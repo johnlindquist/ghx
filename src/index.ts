@@ -560,7 +560,7 @@ async function main() {
           .command(
             "list",
             "Print a list of configuration keys and values",
-            () => {},
+            () => { },
             () => {
               const all = config.store;
               console.log("Configuration settings:");
@@ -572,7 +572,7 @@ async function main() {
           .command(
             "clear-cache",
             "Clear the configuration cache",
-            () => {},
+            () => { },
             () => {
               config.clear();
               console.log("Configuration cache cleared");
@@ -582,7 +582,7 @@ async function main() {
             1,
             "Please specify a valid config command (set, get, list, clear-cache)"
           ),
-      () => {}
+      () => { }
     )
     // Default search command
     .command(
@@ -654,17 +654,55 @@ async function main() {
             describe: "Include or exclude forked repositories",
             alias: "F",
           })
+          // Clear existing examples
+          // Add new examples based on tests
           .example(
-            "$0 'filename:tsconfig.json strict'",
-            "Search for tsconfig.json files containing 'strict'"
+            "$0 'useState'",
+            "Search for 'useState' across all indexed code on GitHub"
           )
           .example(
-            "$0 --repo facebook/react 'useState'",
-            "Search for 'useState' in the React repository"
+            '$0 --repo facebook/react "useState"',
+            "Search for 'useState' in the facebook/react repository"
           )
           .example(
-            "$0 --language typescript 'interface'",
-            "Search for 'interface' in TypeScript files"
+            '$0 -l typescript -e tsx "useState"',
+            "Search for 'useState' in TypeScript files with the .tsx extension"
+          )
+          .example(
+            '$0 -n package.json "dependencies"',
+            "Search for 'dependencies' specifically within package.json files"
+          )
+          .example(
+            '$0 -P src/components "Button"',
+            "Search for 'Button' within the src/components path"
+          )
+          .example(
+            '$0 -s \'">10000\" -l go "package main"',
+            "Search for 'package main' in Go files larger than 10KB"
+          )
+          .example(
+            '$0 "async function" -l typescript', // Multi-term example
+            "Search for the exact phrase 'async function' in TypeScript files"
+          )
+          .example(
+            '$0 "my search terms" --pipe > results.md', // Piping example
+            "Search and pipe the results directly to a markdown file"
+          )
+          .example(
+            '$0 -L 100 -c 30 "complex query"', // Combining options
+            "Fetch up to 100 results with 30 lines of context per match"
+          )
+          .example(
+            '$0 -l typescript "import test"', // Multiple separate terms (implicit AND)
+            "Search for lines containing both 'import' AND 'test' in TypeScript files"
+          )
+          .example(
+            '$0 -l javascript "const OR let"', // OR operator
+            "Search for lines containing either 'const' OR 'let' in JavaScript files"
+          )
+          .example(
+            '$0 -l css "color NOT background-color"', // NOT operator
+            "Search for lines containing 'color' BUT NOT 'background-color' in CSS files"
           )
           .positional("query", {
             describe: "Search query",
@@ -682,9 +720,9 @@ async function main() {
         ]
           .filter(Boolean)
           .join(" ");
-        const searchTerms = (argv.query ? [argv.query] : argv._.map(String))
-          .map((term) => (term.includes(" ") ? `"${term}"` : term))
-          .join(" ");
+        // Simpler handling for search terms to avoid double-quoting issues with operators
+        const searchTerms = argv.query ? String(argv.query) : argv._.map(String).join(" ");
+
         const query = [qualifiers, searchTerms]
           .filter(Boolean)
           .join(" ")

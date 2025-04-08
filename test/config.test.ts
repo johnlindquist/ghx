@@ -1,3 +1,5 @@
+// NOTE: If you update or add tests that demonstrate new command usage,
+// please update the examples in src/index.ts yargs configuration accordingly.
 import { test, expect } from "vitest";
 import { execaCommand } from "execa";
 import { RESULTS_SAVED_MARKER } from "../src/constants.js";
@@ -64,8 +66,8 @@ test("Config paths and user messages match actual file locations", async () => {
     process.platform === "darwin"
       ? `${homeDir}/Library/Preferences/johnlindquist/ghx-nodejs`
       : process.platform === "win32"
-      ? `${homeDir}/AppData/Roaming/johnlindquist/ghx-nodejs`
-      : `${homeDir}/.config/johnlindquist/ghx-nodejs`;
+        ? `${homeDir}/AppData/Roaming/johnlindquist/ghx-nodejs`
+        : `${homeDir}/.config/johnlindquist/ghx-nodejs`;
 
   const expectedConfigPath = `${expectedConfigDir}/config.json`;
 

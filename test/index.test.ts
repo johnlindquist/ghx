@@ -22,7 +22,6 @@ const runExample = async (
   command: string
 ): Promise<SearchResult> => {
   let outputPath: string | null = null;
-  const cliCommand = `pnpm node ${join(projectRoot, "dist/index.js")}`;
 
   console.log("\nRunning command:", command);
 
@@ -172,10 +171,13 @@ test("Help output shows correct command name", async () => {
 test("Search with multiple terms", async () => {
   const result = await runExample(
     "Search with multiple terms",
-    `pnpm node dist/index.js --language typescript --pipe "async function" --limit 1`
+    `pnpm node dist/index.js --language typescript --pipe \"async function\" --limit 1`
   );
-  // Expect the output to contain the search term highlight
-  expect(result.output).toContain("**async** **function**");
+  // Expect the output to *not* contain the old ** highlighting
+  expect(result.output).not.toContain("**async**");
+  expect(result.output).not.toContain("**function**");
+  // Expect the output to contain the terms without highlighting
+  expect(result.output).toContain("async function");
   expect(result.outputPath).toBeTruthy();
 });
 
@@ -184,9 +186,11 @@ test("Search multiple separate terms (implicit AND)", async () => {
     "Search multiple separate terms",
     `pnpm node dist/index.js --language typescript --pipe "import test" --limit 1` // GitHub implicitly ANDs these
   );
-  // Expect results containing both terms (highlighting might vary)
-  expect(result.output).toContain("**import**");
-  expect(result.output).toContain("**test**");
+  // Expect results containing both terms *without* highlighting
+  expect(result.output).not.toContain("**import**");
+  expect(result.output).toContain("import");
+  expect(result.output).not.toContain("**test**");
+  expect(result.output).toContain("test");
   expect(result.outputPath).toBeTruthy();
 });
 
@@ -195,8 +199,10 @@ test("Search with OR operator", async () => {
     "Search with OR operator",
     `pnpm node dist/index.js --language javascript --pipe "const OR let" --limit 1`
   );
-  // Expect results containing either term
-  expect(result.output).toMatch(/(\*\*const\*\*|\*\*let\*\*)/);
+  // Expect results containing either term *without* highlighting
+  expect(result.output).not.toMatch(/\*\*const\*\*/);
+  expect(result.output).not.toMatch(/\*\*let\*\*/);
+  expect(result.output).toMatch(/(const|let)/);
   expect(result.outputPath).toBeTruthy();
 });
 
@@ -205,8 +211,9 @@ test("Search with NOT operator", async () => {
     "Search with NOT operator",
     `pnpm node dist/index.js --repo microsoft/vscode --language css --pipe "color NOT background-color" --limit 1`
   );
-  // Expect results containing 'color' but not 'background-color'
-  expect(result.output).toContain("**color**");
+  // Expect results containing 'color' *without* highlighting, and not 'background-color'
+  expect(result.output).not.toContain("**color**");
+  expect(result.output).toContain("color");
   expect(result.output).not.toContain("background-color");
   expect(result.outputPath).toBeTruthy();
 }, 60000); // Increase timeout as it might be a broader search initially

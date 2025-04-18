@@ -350,22 +350,17 @@ async function ghx(
               contextEnd = nextNewline;
               lineCount++;
             }
+
+            // Adjust contextStart to the beginning of the line
+            contextStart = fileContent.lastIndexOf("\n", contextStart) + 1;
+
+            // Ensure we don't go below 0
+            if (contextStart < 0) contextStart = 0;
+
             let fragment = fileContent.slice(contextStart, contextEnd);
-            const sortedMatches = [...match.matches].sort(
-              (a, b) => b.indices[0] - a.indices[0]
-            );
-            const fragmentOffset = fragmentIndex - contextStart;
-            for (const m of sortedMatches) {
-              const [start, end] = m.indices;
-              const matchText = match.fragment.slice(start, end);
-              const adjustedStart = fragmentOffset + start;
-              const adjustedEnd = fragmentOffset + end;
-              fragment = `${fragment.slice(
-                0,
-                adjustedStart
-              )}**${matchText}**${fragment.slice(adjustedEnd)}`;
-            }
+
             content += `\`\`\`${lang}\n${fragment.trim()}\n\`\`\`\n\n`;
+
             if (debug) {
               log("DEBUG", "Code fence content:");
               log("DEBUG", fragment.trim());

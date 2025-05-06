@@ -14,6 +14,8 @@ import type { Argv } from "yargs";
 import { hideBin } from "yargs/helpers";
 import { RESULTS_SAVED_MARKER } from "./constants.js";
 import { fileURLToPath } from "node:url";
+import { readdir } from "node:fs/promises";
+import { statSync } from "node:fs";
 
 // Define TypeScript interfaces for our types
 interface EditorConfig {
@@ -145,11 +147,11 @@ async function getGitHubToken(): Promise<string> {
  */
 async function ghx(
   initialQuery: string,
-  pipe: boolean = false,
-  debug: boolean = false,
-  limit: number = DEFAULT_SEARCH_LIMIT,
-  maxFilenameLength: number = MAX_FILENAME_LENGTH,
-  contextLines: number = CONTEXT_LINES
+  pipe = false,
+  debug = false,
+  limit = DEFAULT_SEARCH_LIMIT,
+  maxFilenameLength = MAX_FILENAME_LENGTH,
+  contextLines = CONTEXT_LINES
 ): Promise<number> {
   const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
   const logDir = join(configPath, "logs");
@@ -207,14 +209,14 @@ async function ghx(
         headers: { Accept: "application/vnd.github.v3.text-match+json" },
       });
       const results: SearchResult[] = searchResponse.data.items.map(
-        (item: any) => ({
-          path: item.path,
+        (item: Record<string, unknown>) => ({
+          path: item['path'] as string,
           repository: {
-            nameWithOwner: item.repository.full_name,
-            url: item.repository.html_url,
+            nameWithOwner: (item['repository'] as Record<string, unknown>)['full_name'] as string,
+            url: (item['repository'] as Record<string, unknown>)['html_url'] as string,
           },
-          url: item.html_url,
-          text_matches: item.text_matches,
+          url: item['html_url'] as string,
+          text_matches: item['text_matches'] as TextMatch[],
         })
       );
       allResults = allResults.concat(results);
@@ -357,7 +359,7 @@ async function ghx(
             // Ensure we don't go below 0
             if (contextStart < 0) contextStart = 0;
 
-            let fragment = fileContent.slice(contextStart, contextEnd);
+            const fragment = fileContent.slice(contextStart, contextEnd);
 
             content += `\`\`\`${lang}\n${fragment.trim()}\n\`\`\`\n\n`;
 
@@ -371,7 +373,7 @@ async function ghx(
       } catch (error) {
         const err = toErrorWithMessage(error);
         if (err instanceof Error && "status" in err) {
-          const statusError = err as any;
+          const statusError = err as { status?: number };
           if (statusError.status === 403) {
             log("ERROR", "Rate limit exceeded or authentication required");
             content +=
@@ -459,7 +461,7 @@ function toErrorWithMessage(maybeError: unknown): Error {
     typeof maybeError === "object" &&
     maybeError !== null &&
     "message" in maybeError &&
-    typeof (maybeError as any).message === "string"
+    typeof (maybeError as { message?: unknown }).message === "string"
   ) {
     return maybeError as Error;
   }
@@ -470,274 +472,156 @@ function toErrorWithMessage(maybeError: unknown): Error {
   }
 }
 
+// Utility: Find the most recently modified file in a directory
+async function findLatestResultsFile(dir: string): Promise<string | null> {
+  try {
+    const files = await readdir(dir);
+    if (!files.length) return null;
+    let latestFile: string | null = null;
+    let latestMtime = Number.NEGATIVE_INFINITY;
+    for (const file of files) {
+      const mtime = statSync(join(dir, file)).mtimeMs;
+      if (mtime > latestMtime) {
+        latestFile = file;
+        latestMtime = mtime;
+      }
+    }
+    return latestFile ? join(dir, latestFile) : null;
+  } catch {
+    return null;
+  }
+}
+
 // Yargs CLI configuration
 
-type ConfigSetArgs = {
-  key: string;
-  value: string | undefined;
-};
-
-type ConfigGetArgs = {
-  key: string;
-};
-
 async function main() {
-  await yargs(hideBin(process.argv))
+  yargs(hideBin(process.argv))
     .scriptName("ghx")
-    .usage("Usage: $0 [options]")
     .version(packageJson.version)
-    // Config command group
     .command(
-      "config",
-      "Manage configuration settings",
-      (yargs: Argv) =>
-        yargs
-          .command(
-            "set <key> [value]",
-            "Update configuration with a value for the given key",
-            {
-              key: {
-                describe: "Configuration key to set",
-                type: "string",
-                demandOption: true,
-              },
-              value: {
-                describe: "New value for the key",
-                type: "string",
-              },
-            },
-            async (argv: ConfigSetArgs) => {
-              let { key, value } = argv;
-              if (value === undefined) {
-                const result = await p.text({
-                  message: `Enter new value for ${key}`,
-                });
-                if (p.isCancel(result)) {
-                  p.cancel("Configuration update cancelled");
-                  process.exit(1);
-                }
-                value = result;
-              }
-              if (key === "editor") {
-                if (value.toLowerCase() === "false" || value === "null") {
-                  config.set("editor", { command: null, skipEditor: true });
-                  console.log(
-                    `Configuration updated: editor = { command: null, skipEditor: true }`
-                  );
-                } else {
-                  config.set("editor", { command: value, skipEditor: false });
-                  console.log(
-                    `Configuration updated: editor = { command: "${value}", skipEditor: false }`
-                  );
-                }
-              } else {
-                config.set(key, value);
-                console.log(`Configuration updated: ${key} = ${value}`);
-              }
-            }
-          )
-          .command(
-            "get <key>",
-            "Print the value of a given configuration key",
-            {
-              key: {
-                describe: "Configuration key to get",
-                type: "string",
-                demandOption: true,
-              },
-            },
-            (argv: ConfigGetArgs) => {
-              const { key } = argv;
-              const value = config.get(key);
-              console.log(`${key}: ${JSON.stringify(value)}`);
-            }
-          )
-          .command(
-            "list",
-            "Print a list of configuration keys and values",
-            () => { },
-            () => {
-              const all = config.store;
-              console.log("Configuration settings:");
-              for (const key of Object.keys(all) as Array<keyof typeof all>) {
-                console.log(`${key}: ${JSON.stringify(all[key])}`);
-              }
-            }
-          )
-          .command(
-            "clear-cache",
-            "Clear the configuration cache",
-            () => { },
-            () => {
-              config.clear();
-              console.log("Configuration cache cleared");
-            }
-          )
-          .demandCommand(
-            1,
-            "Please specify a valid config command (set, get, list, clear-cache)"
-          ),
-      () => { }
-    )
-    // Default search command
-    .command(
-      "$0 [query]",
+      "$0 [query..]",
       "Search GitHub Code",
       (yargs: Argv) =>
         yargs
+          .positional("query", {
+            describe: "One or more search terms",
+            type: "string",
+            array: true,
+          })
           .option("pipe", {
-            type: "boolean",
-            describe: "Output results directly to stdout",
             alias: "p",
+            type: "boolean",
+            description: "Pipe results to stdout",
+            default: false,
           })
           .option("debug", {
-            type: "boolean",
-            describe: "Output code fence contents for testing",
             alias: "d",
+            type: "boolean",
+            description: "Enable debug logging",
+            default: false,
           })
           .option("limit", {
-            alias: "L",
+            alias: "l",
             type: "number",
-            describe: "Maximum number of results to fetch",
+            description: "Maximum number of results to fetch",
             default: DEFAULT_SEARCH_LIMIT,
           })
-          .option("max-filename", {
-            alias: "f",
-            type: "number",
-            describe: "Maximum length of generated filenames",
-            default: MAX_FILENAME_LENGTH,
-          })
-          .option("context", {
-            alias: "c",
-            type: "number",
-            describe: "Number of context lines around matches",
-            default: CONTEXT_LINES,
-          })
-          // GitHub search qualifiers
-          .option("repo", {
-            type: "string",
-            describe: "Search in a specific repository (owner/repo)",
-            alias: "r",
-          })
-          .option("path", {
-            type: "string",
-            describe: "Search in a specific path",
-            alias: "P",
-          })
-          .option("language", {
-            type: "string",
-            describe: "Search for files in a specific language",
-            alias: "l",
-          })
-          .option("extension", {
-            type: "string",
-            describe: "Search for files with a specific extension",
+          .option("editor", {
             alias: "e",
-          })
-          .option("filename", {
             type: "string",
-            describe: "Search for files with a specific name",
-            alias: "n",
+            description: "Specify editor command (e.g., 'code', 'cursor', 'vim')",
           })
-          .option("size", {
-            type: "string",
-            describe: "Search for files of a specific size",
-            alias: "s",
+          .option("max-filename-length", {
+            type: "number",
+            description: "Maximum length for generated filename",
+            default: MAX_FILENAME_LENGTH,
+            hidden: true,
           })
-          .option("fork", {
-            type: "boolean",
-            describe: "Include or exclude forked repositories",
-            alias: "F",
-          })
-          // Clear existing examples
-          // Add new examples based on tests
-          .example(
-            "$0 'useState'",
-            "Search for 'useState' across all indexed code on GitHub"
-          )
-          .example(
-            '$0 --repo facebook/react "useState"',
-            "Search for 'useState' in the facebook/react repository"
-          )
-          .example(
-            '$0 -l typescript -e tsx "useState"',
-            "Search for 'useState' in TypeScript files with the .tsx extension"
-          )
-          .example(
-            '$0 -n package.json "dependencies"',
-            "Search for 'dependencies' specifically within package.json files"
-          )
-          .example(
-            '$0 -P src/components "Button"',
-            "Search for 'Button' within the src/components path"
-          )
-          .example(
-            '$0 -s \'">10000\" -l go "package main"',
-            "Search for 'package main' in Go files larger than 10KB"
-          )
-          .example(
-            '$0 "async function" -l typescript', // Multi-term example
-            "Search for the exact phrase 'async function' in TypeScript files"
-          )
-          .example(
-            '$0 "my search terms" --pipe > results.md', // Piping example
-            "Search and pipe the results directly to a markdown file"
-          )
-          .example(
-            '$0 -L 100 -c 30 "complex query"', // Combining options
-            "Fetch up to 100 results with 30 lines of context per match"
-          )
-          .example(
-            '$0 -l typescript "import test"', // Multiple separate terms (implicit AND)
-            "Search for lines containing both 'import' AND 'test' in TypeScript files"
-          )
-          .example(
-            '$0 -l javascript "const OR let"', // OR operator
-            "Search for lines containing either 'const' OR 'let' in JavaScript files"
-          )
-          .example(
-            '$0 -l css "color NOT background-color"', // NOT operator
-            "Search for lines containing 'color' BUT NOT 'background-color' in CSS files"
-          )
-          .positional("query", {
-            describe: "Search query",
-            type: "string",
+          .option("context-lines", {
+            type: "number",
+            description: "Number of context lines around matches",
+            default: CONTEXT_LINES,
+            hidden: true,
           }),
       async (argv) => {
-        const qualifiers = [
-          argv.repo && `repo:${argv.repo}`,
-          argv.path && `path:${argv.path}`,
-          argv.language && `language:${argv.language}`,
-          argv.extension && `extension:${argv.extension}`,
-          argv.filename && `filename:${argv.filename}`,
-          argv.size && `size:${argv.size}`,
-          argv.fork !== undefined && `fork:${argv.fork}`,
-        ]
-          .filter(Boolean)
-          .join(" ");
-        // Simpler handling for search terms to avoid double-quoting issues with operators
-        const searchTerms = argv.query ? String(argv.query) : argv._.map(String).join(" ");
+        const searchTermsArray: string[] = [
+          ...(Array.isArray(argv.query)
+            ? argv.query
+            : argv.query
+              ? [argv.query]
+              : []),
+          ...argv._.map(String),
+        ].filter(Boolean);
 
-        const query = [qualifiers, searchTerms]
-          .filter(Boolean)
-          .join(" ")
-          .trim()
-          .replace(/\s+/g, " ");
-        console.log("DEBUG: Final query:", query);
-        const resultCount = await ghx(
-          query,
-          argv.pipe as boolean,
-          argv.debug as boolean,
-          argv.limit as number,
-          argv["max-filename"] as number,
-          argv.context as number
+        if (searchTermsArray.length === 0) {
+          console.error("Error: No search terms provided.");
+          console.log("\nUsage: ghx [query..] [options]");
+          console.log("\nFor more help, run: ghx --help");
+          process.exit(1);
+        }
+
+        const searchTerms = searchTermsArray.join(" ");
+
+        if (argv.editor) {
+          config.set("editor.command", argv.editor);
+          config.set("editor.skipEditor", false);
+        }
+        const numResults = await ghx(
+          searchTerms,
+          argv.pipe,
+          argv.debug,
+          argv.limit,
+          argv["max-filename-length"],
+          argv["context-lines"]
         );
-        process.exit(resultCount === 0 ? 1 : 0);
+        if (!argv.pipe && numResults > 0) {
+          const editorConfig = await getEditorCommand();
+          if (editorConfig.command && !editorConfig.skipEditor) {
+            const s = p.spinner();
+            s.start("Opening results in editor...");
+            const latestFile = await findLatestResultsFile(searchesPath);
+            if (latestFile) {
+              try {
+                execSync(`${editorConfig.command} "${latestFile}"`);
+                s.stop(`Results opened in ${editorConfig.command}`);
+              } catch (error) {
+                s.stop("Failed to open editor");
+                console.error(
+                  `Error opening file ${latestFile} with command '${editorConfig.command}'. Is it installed and in your PATH?`
+                );
+              }
+            } else {
+              s.stop("Could not find the results file to open.");
+            }
+          }
+        }
       }
     )
+    .command({
+      command: "config set <key> <value>",
+      describe: "Set a configuration value (e.g., 'editor.command')",
+      builder: (yargs: Argv) =>
+        yargs
+          .positional("key", {
+            describe: "Config key",
+            type: "string",
+            demandOption: true,
+          })
+          .positional("value", {
+            describe: "Config value",
+            type: "string",
+            demandOption: true,
+          }),
+      handler(argv) {
+        config.set(argv.key, argv.value);
+        console.log(`Set ${argv.key} to ${config.get(argv.key)}`);
+      },
+    })
+    .usage("Usage: ghx [query..] [options]\n\nExamples:\n  ghx database migration postgres --limit 3\n  ghx --repo facebook/react useState hooks --limit 3\n  ghx --language typescript async function --limit 3\n  ghx --pipe database migration postgres --limit 3\n  ghx --repo vercel/next.js getServerSideProps getStaticProps --limit 3\n\nTip: For searches containing OR/NOT, enclose the query in quotes (e.g., 'foo OR bar').")
+    .epilog("Tip: For searches containing OR/NOT, enclose the query in quotes. Spaces are always treated as AND.")
     .help()
-    .alias("help", "h")
-    .parseAsync();
+    .alias("h", "help")
+    .parse();
 }
 
 main().catch(console.error);

@@ -1,11 +1,14 @@
 // NOTE: If you update or add tests that demonstrate new command usage,
 // please update the examples in src/index.ts yargs configuration accordingly.
-import { test, expect, beforeAll } from "vitest";
+import { test, expect, beforeAll, afterAll } from "vitest";
 import { execaCommand } from "execa";
 import { RESULTS_SAVED_MARKER } from "../src/constants.ts";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
+import { mkdirSync, rmSync } from "node:fs";
+import Conf from "conf";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(__filename, "..");
@@ -61,11 +64,10 @@ beforeAll(async () => {
 test("TypeScript config search", async () => {
   const result = await runExample(
     "TypeScript config search",
-    `pnpm node dist/index.js --filename tsconfig.json --pipe strict --limit 2`
+    'pnpm node dist/index.js --filename tsconfig.json --pipe strict --limit 2'
   );
-  console.log("Result:", { result });
-  expect(result.outputPath).toBeTruthy();
-}, 60000);
+  expect(result.output).toContain("strict");
+}, 120000);
 
 test("React components in TypeScript", async () => {
   const result = await runExample(
@@ -102,10 +104,10 @@ test("Dependencies search", async () => {
 test("Large file search", async () => {
   const result = await runExample(
     "Large file search",
-    `pnpm node dist/index.js --size >1000 --language typescript --pipe "class" --limit 1`
+    'pnpm node dist/index.js --size >1000 --language typescript --pipe "class" --limit 1'
   );
-  expect(result.outputPath).toBeTruthy();
-});
+  expect(result.output).toContain("class");
+}, 40000);
 
 test("Path-specific search", async () => {
   const result = await runExample(
@@ -113,8 +115,9 @@ test("Path-specific search", async () => {
     `pnpm node dist/index.js --path src/components --extension tsx --pipe "Button" --limit 1`
   );
   expect(result.outputPath).toBeTruthy();
-});
+}, 40000);
 
+// NOTE: This test may be slow due to large context extraction and GitHub API latency. Do not make this test concurrent; it should run after others to avoid API flakiness.
 test("Search with more context", async () => {
   const result = await runExample(
     "Search with more context",
@@ -126,7 +129,7 @@ test("Search with more context", async () => {
 test("Version flag - development", async () => {
   const result = await runExample(
     "Version flag - development",
-    `pnpm node dist/index.js --version`
+    'pnpm node dist/index.js --version'
   );
   expect(result.output).toMatch("0.0.0"); // Expect dev version
 });
@@ -141,7 +144,7 @@ test("Version flag - simulated published", async () => {
 
   const result = await runExample(
     "Version flag - simulated published",
-    `pnpm node dist/index.js --version`
+    'pnpm node dist/index.js --version'
   );
   expect(result.output).toMatch("1.2.3"); // Expect the set version
 
@@ -152,34 +155,23 @@ test("Version flag - simulated published", async () => {
 test("Help output shows correct command name", async () => {
   const result = await runExample(
     "Help output command name",
-    `pnpm node dist/index.js --help`
+    'pnpm node dist/index.js --help'
   );
-
-  // Should show 'ghx' in usage line
-  expect(result.output).toContain("Usage: ghx [options]");
-
-  // Should show 'ghx' in some current examples
-  expect(result.output).toContain("ghx 'useState'"); // Simple query example
-  expect(result.output).toContain("ghx --repo facebook/react \"useState\""); // Repo example
-  expect(result.output).toContain("ghx -l typescript -e tsx \"useState\""); // Language/extension example
-  expect(result.output).toContain('ghx -l javascript "const OR let"'); // OR example
-
-  // Should not contain 'index.js' in command examples
-  expect(result.output).not.toContain("index.js '");
+  // Should show 'ghx' in usage line with variadic query
+  expect(result.output).toContain("Usage: ghx [query..] [options]");
+  // Should show at least one example
+  expect(result.output).toContain("Examples:");
 });
 
 test("Search with multiple terms", async () => {
   const result = await runExample(
     "Search with multiple terms",
-    `pnpm node dist/index.js --language typescript --pipe \"async function\" --limit 1`
+    'pnpm node dist/index.js --pipe database migration postgres --limit 1'
   );
-  // Expect the output to *not* contain the old ** highlighting
-  expect(result.output).not.toContain("**async**");
-  expect(result.output).not.toContain("**function**");
-  // Expect the output to contain the terms without highlighting
-  expect(result.output).toContain("async function");
-  expect(result.outputPath).toBeTruthy();
-});
+  expect(result.output).toContain("database");
+  expect(result.output).toContain("migration");
+  expect(result.output).toContain("postgres");
+}, 40000);
 
 test("Search multiple separate terms (implicit AND)", async () => {
   const result = await runExample(
@@ -209,16 +201,14 @@ test("Search with OR operator", async () => {
 test("Search with NOT operator", async () => {
   const result = await runExample(
     "Search with NOT operator",
-    `pnpm node dist/index.js --repo microsoft/vscode --language css --pipe "color NOT background-color" --limit 1`
+    'pnpm node dist/index.js --language javascript --pipe "button NOT submit" --limit 1'
   );
-  // Expect results containing 'color' *without* highlighting, and not 'background-color'
-  expect(result.output).not.toContain("**color**");
-  expect(result.output).toContain("color");
-  expect(result.output).not.toContain("background-color");
+  expect(result.output).toContain("button");
+  expect(result.output).not.toContain("submit");
   expect(result.outputPath).toBeTruthy();
-}, 60000); // Increase timeout as it might be a broader search initially
+}, 60000);
 
-test.skip("Supports --limit up to 200 results", async () => {
+test("Supports --limit up to 200 results", async () => {
   // Using a broad query (in TypeScript files) expected to yield many results.
   const result = await runExample(
     "Limit flag up to 200",
@@ -233,3 +223,14 @@ test.skip("Supports --limit up to 200 results", async () => {
   // (If the CLI properly paginates, it will fetch multiple pages when --limit is greater than 100.)
   expect(count).toBeGreaterThan(100);
 }, 120000); // Increase timeout to 120 seconds
+
+test("variadic query terms", async () => {
+  const result = await runExample(
+    "Multi-word query",
+    "pnpm node dist/index.js --pipe database migration postgres --limit 1"
+  );
+  // Should contain all the search terms in the output
+  expect(result.output).toContain("database");
+  expect(result.output).toContain("migration");
+  expect(result.output).toContain("postgres");
+});

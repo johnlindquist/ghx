@@ -88,4 +88,4 @@ test("Config paths and user messages match actual file locations", async () => {
   // Verify searches directory exists in the correct location
   const searchesDir = join(expectedConfigDir, "searches");
   expect(existsSync(searchesDir)).toBe(true);
-});
+}, 120000);

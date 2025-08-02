@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Testing pre-push hook
+// Testing pre-push hook with Husky
 import { Octokit } from "@octokit/rest";
 import { format } from "date-fns";
 import { join, dirname, parse } from "node:path";

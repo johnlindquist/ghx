@@ -42,6 +42,9 @@ ghx is a GitHub Code Search CLI tool that searches for code snippets across GitH
 - User config stored via `conf` package in platform-specific directories
 - Editor preferences saved in `config.json`
 - Search results saved in `searches/` subdirectory
+- Claude Code settings stored in `.claude/` directory:
+  - `settings.local.json` - Permissions for MCP tools and commands
+  - `.gitkeep` - Ensures the configuration directory is tracked
 
 ### TypeScript Setup
 - Extends Node 23 and strictest TypeScript configs

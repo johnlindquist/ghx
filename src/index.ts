@@ -542,6 +542,46 @@ async function main() {
             description: "Number of context lines around matches",
             default: CONTEXT_LINES,
             hidden: true,
+          })
+          .option("filename", {
+            type: "string",
+            description: "Filter on filename",
+          })
+          .option("extension", {
+            type: "string",
+            description: "Filter on file extension",
+          })
+          .option("language", {
+            type: "string",
+            description: "Filter results by language",
+          })
+          .option("repo", {
+            alias: "R",
+            type: "string",
+            array: true,
+            description: "Filter on repository",
+          })
+          .option("path", {
+            type: "string",
+            description: "Filter on file path",
+          })
+          .option("size", {
+            type: "string",
+            description: "Filter on size range, in kilobytes",
+          })
+          .option("fork", {
+            type: "string",
+            description: "Include forked repositories: {true|false|only}",
+          })
+          .option("owner", {
+            type: "string",
+            array: true,
+            description: "Filter on owner",
+          })
+          .option("match", {
+            type: "string",
+            array: true,
+            description: "Restrict search to file contents or file path: {file|path}",
           }),
       async (argv) => {
         const searchTermsArray: string[] = [
@@ -553,21 +593,64 @@ async function main() {
           ...argv._.map(String),
         ].filter(Boolean);
 
-        if (searchTermsArray.length === 0) {
-          console.error("Error: No search terms provided.");
+        // Allow empty search terms if using search qualifiers
+        const hasSearchQualifiers = argv.filename || argv.extension || argv.language || 
+          argv.repo || argv.path || argv.size || argv.fork || argv.owner || argv.match;
+        
+        if (searchTermsArray.length === 0 && !hasSearchQualifiers) {
+          console.error("Error: No search terms or search qualifiers provided.");
           console.log("\nUsage: ghx [query..] [options]");
           console.log("\nFor more help, run: ghx --help");
           process.exit(1);
         }
 
-        const searchTerms = searchTermsArray.join(" ");
+        // Build search query with GitHub search qualifiers
+        let searchQuery = searchTermsArray.join(" ");
+        
+        // Add search qualifiers based on flags
+        if (argv.filename) {
+          searchQuery += ` filename:${argv.filename}`;
+        }
+        if (argv.extension) {
+          searchQuery += ` extension:${argv.extension}`;
+        }
+        if (argv.language) {
+          searchQuery += ` language:${argv.language}`;
+        }
+        if (argv.repo) {
+          const repos = Array.isArray(argv.repo) ? argv.repo : [argv.repo];
+          repos.forEach(repo => {
+            searchQuery += ` repo:${repo}`;
+          });
+        }
+        if (argv.path) {
+          searchQuery += ` path:${argv.path}`;
+        }
+        if (argv.size) {
+          searchQuery += ` size:${argv.size}`;
+        }
+        if (argv.fork) {
+          searchQuery += ` fork:${argv.fork}`;
+        }
+        if (argv.owner) {
+          const owners = Array.isArray(argv.owner) ? argv.owner : [argv.owner];
+          owners.forEach(owner => {
+            searchQuery += ` user:${owner}`;
+          });
+        }
+        if (argv.match) {
+          const matches = Array.isArray(argv.match) ? argv.match : [argv.match];
+          matches.forEach(match => {
+            searchQuery += ` in:${match}`;
+          });
+        }
 
         if (argv.editor) {
           config.set("editor.command", argv.editor);
           config.set("editor.skipEditor", false);
         }
         const numResults = await ghx(
-          searchTerms,
+          searchQuery,
           argv.pipe,
           argv.debug,
           argv.limit,
@@ -617,7 +700,7 @@ async function main() {
         console.log(`Set ${argv.key} to ${config.get(argv.key)}`);
       },
     })
-    .usage("Usage: ghx [query..] [options]\n\nExamples:\n  ghx database migration postgres --limit 3\n  ghx --repo facebook/react useState hooks --limit 3\n  ghx --language typescript async function --limit 3\n  ghx --pipe database migration postgres --limit 3\n  ghx --repo vercel/next.js getServerSideProps getStaticProps --limit 3\n\nTip: For searches containing OR/NOT, enclose the query in quotes (e.g., 'foo OR bar').")
+    .usage("Usage: ghx [query..] [options]\n\nExamples:\n  ghx database migration postgres --limit 3\n  ghx --repo facebook/react useState hooks --limit 3\n  ghx --language typescript async function --limit 3\n  ghx --filename tsconfig.json strict --limit 3\n  ghx --extension tsx --language typescript useState --limit 3\n  ghx --path src/components Button --limit 3\n  ghx --owner microsoft --language typescript interface --limit 3\n  ghx --size '>1000' class --limit 3\n  ghx --pipe database migration postgres --limit 3\n  ghx --repo vercel/next.js getServerSideProps getStaticProps --limit 3\n\nTip: For searches containing OR/NOT, enclose the query in quotes (e.g., 'foo OR bar').")
     .epilog("Tip: For searches containing OR/NOT, enclose the query in quotes. Spaces are always treated as AND.")
     .help()
     .alias("h", "help")

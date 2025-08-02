@@ -1,0 +1,109 @@
+#!/usr/bin/env sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Pre-push hook to update CLAUDE.md using Claude CLI
+# This hook runs before git push and updates documentation based on code changes
+
+set -e
+
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Check if claude CLI is available
+if ! command -v claude &> /dev/null; then
+    echo -e "${RED}Error: Claude CLI not found${NC}"
+    echo "Please install Claude CLI: https://claude.ai/code"
+    exit 1
+fi
+
+# Get the last commit that modified CLAUDE.md
+LAST_CLAUDE_COMMIT=$(git log -1 --format="%H" -- CLAUDE.md 2>/dev/null || echo "")
+
+# If CLAUDE.md doesn't exist or has never been committed, use the initial commit
+if [ -z "$LAST_CLAUDE_COMMIT" ]; then
+    LAST_CLAUDE_COMMIT=$(git rev-list --max-parents=0 HEAD)
+fi
+
+# Get current commit
+CURRENT_COMMIT=$(git rev-parse HEAD)
+
+# Skip if no changes since last CLAUDE.md update
+if [ "$LAST_CLAUDE_COMMIT" = "$CURRENT_COMMIT" ]; then
+    echo -e "${YELLOW}No changes since last CLAUDE.md update, skipping...${NC}"
+    exit 0
+fi
+
+# Check if the only changes are to CLAUDE.md itself (avoid infinite loop)
+CHANGED_FILES=$(git diff --name-only $LAST_CLAUDE_COMMIT..$CURRENT_COMMIT | grep -v "^CLAUDE.md$" || true)
+if [ -z "$CHANGED_FILES" ]; then
+    echo -e "${YELLOW}Only CLAUDE.md changed, skipping update to avoid loop...${NC}"
+    exit 0
+fi
+
+echo -e "${GREEN}Updating CLAUDE.md based on recent changes...${NC}"
+
+# Get the diff since last CLAUDE.md update
+DIFF_OUTPUT=$(git diff $LAST_CLAUDE_COMMIT..$CURRENT_COMMIT --stat)
+DIFF_DETAILS=$(git diff $LAST_CLAUDE_COMMIT..$CURRENT_COMMIT --unified=3)
+
+# Get list of changed files
+FILE_LIST=$(git diff --name-only $LAST_CLAUDE_COMMIT..$CURRENT_COMMIT)
+
+# Read current CLAUDE.md content
+CURRENT_CLAUDE_CONTENT=""
+if [ -f "CLAUDE.md" ]; then
+    CURRENT_CLAUDE_CONTENT=$(cat CLAUDE.md)
+fi
+
+# Create the prompt for Claude
+PROMPT="You are updating the CLAUDE.md documentation file for a GitHub project. I'll provide you with the current content and recent changes, and you should update the documentation accordingly.
+
+Important guidelines:
+1. Update the project overview if core functionality changed
+2. Update the file structure/architecture section if new files or directories were added/removed
+3. Update command lists if package.json scripts changed
+4. Update dependency lists if package.json dependencies changed
+5. Keep the same overall structure and tone as the existing document
+6. Focus on information that helps Claude Code understand the codebase
+7. Don't just summarize commit messages - reflect actual code structure changes
+8. Use the Edit tool to update the CLAUDE.md file directly
+
+Current CLAUDE.md content:
+\`\`\`markdown
+$CURRENT_CLAUDE_CONTENT
+\`\`\`
+
+Files changed since last documentation update:
+$FILE_LIST
+
+Summary of changes:
+$DIFF_OUTPUT
+
+Detailed changes (first 5000 chars):
+${DIFF_DETAILS:0:5000}
+
+Now please update the CLAUDE.md file with these changes."
+
+# Run Claude CLI with permission to edit files
+echo "Running Claude to update documentation..."
+claude --print --dangerously-skip-permissions "$PROMPT" 2>&1
+CLAUDE_EXIT_CODE=$?
+
+# Check if Claude ran successfully
+if [ $CLAUDE_EXIT_CODE -ne 0 ]; then
+    echo -e "${RED}Failed to run Claude CLI${NC}"
+    exit 1
+fi
+
+# Stage and amend to the current commit
+git add CLAUDE.md
+git commit --amend --no-edit --no-verify
+
+echo -e "${GREEN}✓ CLAUDE.md has been updated and amended to the current commit${NC}"
+echo -e "${YELLOW}Note: The current commit has been amended to include the CLAUDE.md update.${NC}"
+
+# Continue with the push
+exit 0

@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ghx is a GitHub Code Search CLI tool that searches for code snippets across GitHub repositories and displays them with context. It integrates with the GitHub CLI (`gh`) for authentication and supports various search parameters like language, repository, and file extensions.
 
+The project includes automated documentation updates through a pre-push Git hook that uses Claude CLI to keep this CLAUDE.md file synchronized with code changes.
+
 ## Essential Commands
 
 ### Development
@@ -45,6 +47,15 @@ ghx is a GitHub Code Search CLI tool that searches for code snippets across GitH
 - Claude Code settings stored in `.claude/` directory:
   - `settings.local.json` - Permissions for MCP tools and commands
   - `.gitkeep` - Ensures the configuration directory is tracked
+
+### Git Hooks
+- **Pre-push hook** (`.husky/pre-push`): Automatically updates CLAUDE.md documentation
+  - Runs before each `git push` operation
+  - Detects changes since last CLAUDE.md update
+  - Uses Claude CLI to analyze code changes and update documentation
+  - Amends the current commit to include documentation updates
+  - Requires Claude CLI to be installed and available in PATH
+  - Skips updates if only CLAUDE.md itself changed (prevents infinite loops)
 
 ### TypeScript Setup
 - Extends Node 23 and strictest TypeScript configs

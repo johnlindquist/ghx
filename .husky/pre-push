@@ -6,6 +6,12 @@
 
 set -e
 
+# Skip on CI environments
+if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$GITLAB_CI" ] || [ -n "$CIRCLECI" ] || [ -n "$TRAVIS" ] || [ -n "$JENKINS_HOME" ]; then
+    echo "Skipping pre-push hook in CI environment"
+    exit 0
+fi
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'

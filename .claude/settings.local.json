@@ -5,7 +5,10 @@
       "mcp__deepwiki__read_wiki_contents",
       "mcp__deepwiki__ask_question",
       "Bash(chmod:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

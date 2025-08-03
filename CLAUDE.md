@@ -45,17 +45,21 @@ The project includes automated documentation updates through a pre-push Git hook
 - Editor preferences saved in `config.json`
 - Search results saved in `searches/` subdirectory
 - Claude Code settings stored in `.claude/` directory:
-  - `settings.local.json` - Permissions for MCP tools and commands
+  - `settings.local.json` - Permissions for MCP tools and commands (includes git operations and file system access)
   - `.gitkeep` - Ensures the configuration directory is tracked
+- VSCode workspace settings in `.vscode/settings.json` customize editor find/search highlighting
+- SpecStory files excluded from Cursor indexing via `.cursorindexingignore`
 
 ### Git Hooks
 - **Pre-push hook** (`.husky/pre-push`): Automatically updates CLAUDE.md documentation
   - Runs before each `git push` operation
+  - Automatically skips execution in CI environments (GitHub Actions, GitLab CI, CircleCI, Travis, Jenkins)
   - Detects changes since last CLAUDE.md update
   - Uses Claude CLI to analyze code changes and update documentation
   - Amends the current commit to include documentation updates
   - Requires Claude CLI to be installed and available in PATH
   - Skips updates if only CLAUDE.md itself changed (prevents infinite loops)
+- **Pre-commit hook**: Removed (previously ran build:check and tests)
 
 ### TypeScript Setup
 - Extends Node 23 and strictest TypeScript configs
